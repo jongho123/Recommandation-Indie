@@ -12,7 +12,8 @@
             android:layout_height="match_parent"
             android:layout_weight="1"/>
 
-    <Button android:text="Music recommendation"
+    <Button android:id="@+id/btn_music_recommendation"
+            android:text="Music recommendation"
             android:textColor="#ff00ff00"
             android:background="#ffff0000"
             android:layout_width="match_parent"

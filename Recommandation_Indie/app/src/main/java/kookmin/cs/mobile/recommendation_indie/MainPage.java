@@ -7,9 +7,20 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+/**
+ * @author Jongho Lim, sloth@kookmin.ac.kr
+ * @version 0.0.2
+ * @brief 이 액티비티는 클래스는 메인화면 페이지입니다.
+ * @details Listener 화면으로 음악 추천과 음악 검색, 설정의 버튼으로 만들어 보았으며 Singer로 로그인시 음악 등록하는 버튼이 추가로 보여집니다. 액션바에
+ * 로그인 버튼이 있습니다. 로그인 버튼을 누르면 로그인 화면으로 넘어갑니다.
+ * @date 2015-04-20
+ * @Todo 버튼을 이미지로 교체해야함.
+ */
 public class MainPage extends ActionBarActivity {
 
   private static final int REQUEST_CODE_LOGIN = 1001;
@@ -19,6 +30,7 @@ public class MainPage extends ActionBarActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
+
 
   }
 
@@ -30,14 +42,31 @@ public class MainPage extends ActionBarActivity {
     LayoutInflater inflater = (LayoutInflater) getSystemService(LAYOUT_INFLATER_SERVICE);
     contentsLayout.removeAllViewsInLayout();
 
-    if(singer) {
+    if (singer) {
       inflater.inflate(R.layout.activity_main_singer, contentsLayout, true);
       Log.i("mytag", "inflate");
-      return ;
+
+      Button btnReco = (Button) findViewById(R.id.btn_music_recommendation);
+      btnReco.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+          startActivity(new Intent(getApplicationContext(), RecommendationMusicPage.class));
+        }
+      });
+
+      return;
     }
 
     inflater.inflate(R.layout.activity_main_listener, contentsLayout, true);
     Log.i("mytag", "end start");
+
+    Button btnReco = (Button) findViewById(R.id.btn_music_recommendation);
+    btnReco.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View view) {
+        startActivity(new Intent(getApplicationContext(), RecommendationMusicPage.class));
+      }
+    });
   }
 
   @Override
@@ -45,15 +74,19 @@ public class MainPage extends ActionBarActivity {
     super.onActivityResult(requestCode, resultCode, Data);
 
     Log.i("mytag", "onActivityResult");
-    if(requestCode == REQUEST_CODE_LOGIN && resultCode == RESULT_OK) {
-      if(Data.getExtras().getInt("user") == 1)
+    if (requestCode == REQUEST_CODE_LOGIN && resultCode == RESULT_OK) {
+      if (Data.getExtras().getInt("user") == 1) {
         singer = true;
+      } else {
+        singer = false;
+      }
 
-      Toast.makeText(getApplicationContext(), ""+singer, Toast.LENGTH_SHORT).show();
+      Toast.makeText(getApplicationContext(), "" + singer, Toast.LENGTH_SHORT).show();
     }
     Log.i("mytag", "end onActivityResult");
 
   }
+
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
     // Inflate the menu; this adds items to the action bar if it is present.
