@@ -1,0 +1,14 @@
+{
+  "name": "recommendation_indie",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+    "express":"*",
+    "morgan":"*",
+    "body-parser":"*",
+    "multer":"*"
+  },
+  "author": "Jongho Lim",
+  "license": "ISC"
+}
