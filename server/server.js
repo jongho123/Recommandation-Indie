@@ -18,51 +18,63 @@ app.get('/', function(req, res) {
   res.end('hello world');
 });
 
+var swit = true;
+var count = 0;
 app.get('/recommendation', function(req, res) {
-  console.log('');
-  var readStream = fs.createReadStream('./music/안부.mp3');
+  var readStream;
   var dataLength = 0;
+
+  if(swit) {
+    readStream = fs.createReadStream('./music/안부.mp3');
+    console.log('play music 안부.mp3');
+  } else {
+    readStream = fs.createReadStream('./music/재회.mp3');
+    console.log('play music 재회.mp3');
+  }
+
   readStream.pipe(res); 
 
   readStream.on('data', function(data) {
     dataLength += data.length;
-    console.log(data.length);
   })
   .on('end', function() {
-    console.log('The loegth was : ' + dataLength);
+    console.log('The length was : ' + dataLength);
+    if(++count == 2) {
+      count %= 2;
+      if(swit) swit = false;
+      else swit = true;
+    }
   });
+  
 });
 
-/* // register music test... 
+// register music test... 
 app.post('/', function(req, res) {
   console.log("reqeust mesg");
-  //console.log(req.get('Contents-Length'));
-  //console.log(req);
 
+  //var inStream = fs.createReadStream(req.files.uploaded.path);
   //var outStream = fs.createWriteStream('./music/sample.amr');
   var dataLength = 0;
-  var data = req.body;
-  fs.writeFile('./music/sample.amr', data, function(err) {
+  var oldPath = req.files.uploaded.path;
+  var newPath = __dirname + "/music/" + req.files.uploaded.originalname; 
+  console.log(req.files);
+
+  fs.rename(oldPath, newPath, function(err) {
     if(err) return console.log(err);
-    //console.log('file length is : %d', req.body.length); 
-  }); 
-
-  req.on('data',function(chunk) {
-    console.log('this is chunk : %d', chunk.length);
+    console.log('The file written %s to %s', oldPath, newPath);
   });
-
-  var outStream = fs.createWriteStream('./music/sample.amr');
-  var dataLength = 0;
-  outStream.pipe(req);
-  outStream.on('data', function(data) {
+  /*
+  inStream.pipe(outStream);
+  inStream.on('data', function(data) {
     dataLength += data.length;
   })
   .on('end', function() {
     console.log('The length was : ' + dataLength);
   });
+  */
   res.sendStatus(200);
+
 });
-*/
 
 app.listen(port, function(err) {
   if(err) return console.log(err);

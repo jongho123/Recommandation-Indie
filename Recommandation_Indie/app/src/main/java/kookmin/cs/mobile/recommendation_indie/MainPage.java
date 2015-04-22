@@ -3,7 +3,6 @@ package kookmin.cs.mobile.recommendation_indie;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,7 +20,7 @@ import android.widget.Toast;
  * @date 2015-04-20
  * @Todo 버튼을 이미지로 교체해야함.
  */
-public class MainPage extends ActionBarActivity {
+public class MainPage extends ActionBarActivity implements View.OnClickListener {
 
   private static final int REQUEST_CODE_LOGIN = 1001;
   private boolean singer = false;
@@ -30,13 +29,10 @@ public class MainPage extends ActionBarActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
-
-
   }
 
   protected void onStart() {
     super.onStart();
-    Log.i("mytag", "onStart");
 
     LinearLayout contentsLayout = (LinearLayout) findViewById(R.id.activity_main_container);
     LayoutInflater inflater = (LayoutInflater) getSystemService(LAYOUT_INFLATER_SERVICE);
@@ -44,36 +40,23 @@ public class MainPage extends ActionBarActivity {
 
     if (singer) {
       inflater.inflate(R.layout.activity_main_singer, contentsLayout, true);
-      Log.i("mytag", "inflate");
-
       Button btnReco = (Button) findViewById(R.id.btn_music_recommendation);
-      btnReco.setOnClickListener(new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-          startActivity(new Intent(getApplicationContext(), RecommendationMusicPage.class));
-        }
-      });
+      Button btnRegister = (Button) findViewById(R.id.btn_register_music);
+      btnReco.setOnClickListener(this);
+      btnRegister.setOnClickListener(this);
 
       return;
     }
 
     inflater.inflate(R.layout.activity_main_listener, contentsLayout, true);
-    Log.i("mytag", "end start");
-
     Button btnReco = (Button) findViewById(R.id.btn_music_recommendation);
-    btnReco.setOnClickListener(new View.OnClickListener() {
-      @Override
-      public void onClick(View view) {
-        startActivity(new Intent(getApplicationContext(), RecommendationMusicPage.class));
-      }
-    });
+    btnReco.setOnClickListener(this);
   }
 
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent Data) {
     super.onActivityResult(requestCode, resultCode, Data);
 
-    Log.i("mytag", "onActivityResult");
     if (requestCode == REQUEST_CODE_LOGIN && resultCode == RESULT_OK) {
       if (Data.getExtras().getInt("user") == 1) {
         singer = true;
@@ -83,8 +66,6 @@ public class MainPage extends ActionBarActivity {
 
       Toast.makeText(getApplicationContext(), "" + singer, Toast.LENGTH_SHORT).show();
     }
-    Log.i("mytag", "end onActivityResult");
-
   }
 
   @Override
@@ -108,5 +89,14 @@ public class MainPage extends ActionBarActivity {
     }
 
     return super.onOptionsItemSelected(item);
+  }
+
+  @Override
+  public void onClick(View v) {
+    if (v.getId() == R.id.btn_music_recommendation) {
+      startActivity(new Intent(getApplicationContext(), RecommendationMusicPage.class));
+    } else if (v.getId() == R.id.btn_register_music) {
+      startActivity(new Intent(getApplicationContext(), RegisterMusicPage.class));
+    }
   }
 }

@@ -5,7 +5,8 @@
               android:layout_height="match_parent"
               android:orientation="horizontal">
 
-    <Button android:text="Registe Music"
+    <Button android:id="@+id/btn_register_music"
+            android:text="Register Music"
             android:textColor="#ff00ff00"
             android:background="#0000ff"
             android:layout_width="match_parent"
