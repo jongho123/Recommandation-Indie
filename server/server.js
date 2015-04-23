@@ -14,8 +14,32 @@ app.use(bodyParser.urlencoded({ extended : true }));
 app.use(multer());
 app.use(logger(myLog));
 
+var list = [];
+fs.readdir('./music', function(err, files) {
+  if(err) return console.log(err);
+  for(var i = 0; i < files.length; ++i) {
+    list.push("name:" + files[i]);
+  }
+  console.log(list);
+});
 app.get('/', function(req, res) {
-  res.end('hello world');
+  /*
+  // create rand value test for encryptment
+  fs.open('/dev/urandom', 'r', function(err, fd){
+    var buffer = new Buffer(10);
+
+    fs.read(fd, buffer, 0, buffer.length, 0, function(err, l, buf) {
+      res.write(buf.toString('utf8', 0, l));
+      res.end();
+      console.log(buf.toString('utf8', 0, l));
+      console.log('urandom size : %d', l);
+    });
+
+    fs.close(fd);
+  });
+
+  */
+  res.end('Hello world');
 });
 
 var swit = true;
@@ -45,7 +69,10 @@ app.get('/recommendation', function(req, res) {
       else swit = true;
     }
   });
-  
+});
+
+app.get('/music', function(req, res) {
+    res.json(list);
 });
 
 // register music test... 
@@ -73,12 +100,10 @@ app.post('/', function(req, res) {
   });
   */
   res.sendStatus(200);
-
 });
 
 app.listen(port, function(err) {
   if(err) return console.log(err);
   console.log('listening on %s', port);
 });
-
 
