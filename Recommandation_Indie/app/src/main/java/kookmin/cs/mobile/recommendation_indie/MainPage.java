@@ -13,7 +13,7 @@ import android.widget.Toast;
 
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
- * @version 0.0.2
+ * @version 0.0.4
  * @brief 이 액티비티는 클래스는 메인화면 페이지입니다.
  * @details Listener 화면으로 음악 추천과 음악 검색, 설정의 버튼으로 만들어 보았으며 Singer로 로그인시 음악 등록하는 버튼이 추가로 보여집니다. 액션바에
  * 로그인 버튼이 있습니다. 로그인 버튼을 누르면 로그인 화면으로 넘어갑니다.
@@ -29,6 +29,9 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
+
+    Button btnFind = (Button) findViewById(R.id.btn_music_finder);
+    btnFind.setOnClickListener(this);
   }
 
   protected void onStart() {
@@ -94,9 +97,11 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   @Override
   public void onClick(View v) {
     if (v.getId() == R.id.btn_music_recommendation) {
-      startActivity(new Intent(getApplicationContext(), RecommendationMusicPage.class));
+      startActivity(new Intent(this, RecommendationMusicPage.class));
     } else if (v.getId() == R.id.btn_register_music) {
-      startActivity(new Intent(getApplicationContext(), RegisterMusicPage.class));
+      startActivity(new Intent(this, RegisterMusicPage.class));
+    } else if (v.getId() == R.id.btn_music_finder) {
+      startActivity(new Intent(this, MusicFinder.class));
     }
   }
 }

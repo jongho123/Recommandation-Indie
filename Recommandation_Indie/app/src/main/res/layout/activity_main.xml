@@ -19,7 +19,7 @@
                   android:layout_height="match_parent"
                   android:layout_weight="2">
 
-        <Button
+        <Button android:id="@+id/btn_music_finder"
                 android:text="Music finder"
                 android:textColor="#ff00ff00"
                 android:background="#ffff00ff"
