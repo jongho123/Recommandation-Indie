@@ -7,7 +7,8 @@
     "express":"*",
     "morgan":"*",
     "body-parser":"*",
-    "multer":"*"
+    "multer":"*",
+    "aws-sdk":"*" 
   },
   "author": "Jongho Lim",
   "license": "ISC"
