@@ -64,14 +64,17 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
 
   protected void playMusic() {
     try {
-      mediaplayer = new MediaPlayer();
-      mediaplayer.reset();
-      mediaplayer.setDataSource(AUDIO_URL + "/recommendation");
-      mediaplayer.setOnPreparedListener(this);
-      mediaplayer.setOnErrorListener(this);
-      mediaplayer.setOnCompletionListener(this);
-      mediaplayer.prepareAsync();
+        if (mediaplayer != null && mediaplayer.isPlaying()) {
+          releaseMusic();
+        }
 
+        mediaplayer = new MediaPlayer();
+        mediaplayer.reset();
+        mediaplayer.setDataSource(AUDIO_URL + "/recommendation");
+        mediaplayer.setOnPreparedListener(this);
+        mediaplayer.setOnErrorListener(this);
+        mediaplayer.setOnCompletionListener(this);
+        mediaplayer.prepareAsync();
     } catch (IOException e) {
       e.printStackTrace();
     }
