@@ -5,11 +5,13 @@
 
     <item android:id="@+id/action_settings"
           android:title="@string/action_settings"
-          android:orderInCategory="100"
-          app:showAsAction="never"/>
+          android:icon="@drawable/actionbar_menu"
+          android:orderInCategory="200"
+          app:showAsAction="ifRoom"/>
 
     <item android:id="@+id/action_login"
-          android:title="Login"
-          android:orderInCategory="200"
-          app:showAsAction="always"/>
+          android:title=""
+          android:icon="@drawable/actionbar_login"
+          android:orderInCategory="100"
+          app:showAsAction="ifRoom"/>
 </menu>
