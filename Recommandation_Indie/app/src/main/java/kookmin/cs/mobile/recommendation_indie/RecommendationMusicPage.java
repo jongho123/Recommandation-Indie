@@ -26,55 +26,71 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   static final String AUDIO_URL = "http://52.68.82.234:19918";
   private MediaPlayer mediaplayer;
   private int playbackPosition = 0;
+  private boolean musicPlay = false;
+  private boolean restart = false;
+
+  private Button btnPlay;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_muisc_recommendation);
 
-    Button btnPlay = (Button) findViewById(R.id.btn_play);
-
-    /* test button */
-    Button btnPause = (Button) findViewById(R.id.btn_pause);
-    Button btnRestart = (Button) findViewById(R.id.btn_restart);
+    btnPlay = (Button) findViewById(R.id.btn_play);
+    Button btnNext = (Button) findViewById(R.id.btn_next_play);
+    Button btnPrev = (Button) findViewById(R.id.btn_prev_play);
 
     btnPlay.setOnClickListener(this);
-    btnPause.setOnClickListener(this);
-    btnRestart.setOnClickListener(this);
+    btnNext.setOnClickListener(this);
+    btnPrev.setOnClickListener(this);
   }
 
   @Override
   public void onClick(View v) {
     switch (v.getId()) {
       case R.id.btn_play:
+        if (!musicPlay) {
+          icon2playing();
+          if (!restart) {
+            playMusic();
+          } else {
+            mediaplayer.start();
+            mediaplayer.seekTo(playbackPosition);
+            musicPlay = !musicPlay;
+            Toast.makeText(getApplicationContext(), "음악 파일 재생 재시작됨", Toast.LENGTH_SHORT).show();
+          }
+        } else {
+          icon2stoping();
+          playbackPosition = mediaplayer.getCurrentPosition();
+          mediaplayer.pause();
+          musicPlay = !musicPlay;
+          Toast.makeText(getApplicationContext(), "음악 파일 재생 중지됨", Toast.LENGTH_SHORT).show();
+        }
+        break;
+
+      case R.id.btn_prev_play:
+      case R.id.btn_next_play:
+        icon2playing();
         playMusic();
-        break;
-      case R.id.btn_pause:
-        playbackPosition = mediaplayer.getCurrentPosition();
-        mediaplayer.pause();
-        Toast.makeText(getApplicationContext(), "음악 파일 재생 중지됨", Toast.LENGTH_SHORT).show();
-        break;
-      case R.id.btn_restart:
-        mediaplayer.start();
-        mediaplayer.seekTo(playbackPosition);
-        Toast.makeText(getApplicationContext(), "음악 파일 재생 재시작됨", Toast.LENGTH_SHORT).show();
         break;
     }
   }
 
   protected void playMusic() {
     try {
-        if (mediaplayer != null && mediaplayer.isPlaying()) {
-          releaseMusic();
-        }
+      if (mediaplayer != null && mediaplayer.isPlaying()) {
+        releaseMusic();
+      }
 
-        mediaplayer = new MediaPlayer();
-        mediaplayer.reset();
-        mediaplayer.setDataSource(AUDIO_URL + "/recommendation");
-        mediaplayer.setOnPreparedListener(this);
-        mediaplayer.setOnErrorListener(this);
-        mediaplayer.setOnCompletionListener(this);
-        mediaplayer.prepareAsync();
+      mediaplayer = new MediaPlayer();
+      mediaplayer.reset();
+      mediaplayer.setDataSource(AUDIO_URL + "/recommendation");
+      mediaplayer.setOnPreparedListener(this);
+      mediaplayer.setOnErrorListener(this);
+      mediaplayer.setOnCompletionListener(this);
+      mediaplayer.prepareAsync();
+      musicPlay = true;
+      restart = true;
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -132,5 +148,12 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   public void onCompletion(MediaPlayer mediaPlayer) {
     releaseMusic();
     playMusic();
+  }
+
+  private void icon2playing() {
+    btnPlay.setSelected(true);
+  }
+  private void icon2stoping() {
+    btnPlay.setSelected(false);
   }
 }

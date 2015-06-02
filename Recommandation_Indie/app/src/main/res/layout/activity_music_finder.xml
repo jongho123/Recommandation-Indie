@@ -4,6 +4,21 @@
               android:layout_width="match_parent"
               android:layout_height="match_parent">
 
+    <LinearLayout android:layout_width="match_parent"
+                  android:layout_height="50dp">
+
+        <EditText android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:background="@drawable/finder_edit_background"
+                  android:hint="노래 제목이나 가수명을 입력하세요"
+                  android:layout_weight="1"/>
+
+        <Button android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_weight="8"
+                android:background="@drawable/finder_shearch"/>
+    </LinearLayout>
+
     <ListView android:id="@+id/music_list"
               android:layout_width="match_parent"
               android:layout_height="match_parent">
