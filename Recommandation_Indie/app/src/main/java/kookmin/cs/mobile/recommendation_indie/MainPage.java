@@ -31,7 +31,10 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     setContentView(R.layout.activity_main);
 
     Button btnFind = (Button) findViewById(R.id.btn_music_finder);
+    Button btnConfigure = (Button) findViewById(R.id.btn_configure);
+
     btnFind.setOnClickListener(this);
+    btnConfigure.setOnClickListener(this);
   }
 
   protected void onStart() {
@@ -102,6 +105,8 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       startActivity(new Intent(this, RegisterMusicPage.class));
     } else if (v.getId() == R.id.btn_music_finder) {
       startActivity(new Intent(this, MusicFinder.class));
+    }else if (v.getId() == R.id.btn_configure) {
+      startActivity(new Intent(this, AnalysisPage.class));
     }
   }
 }
