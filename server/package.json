@@ -8,7 +8,9 @@
     "morgan":"*",
     "body-parser":"*",
     "multer":"*",
-    "aws-sdk":"*" 
+    "aws-sdk":"*",
+    "file-stream-rotator":"*",
+    "mongoose":"*"
   },
   "author": "Jongho Lim",
   "license": "ISC"

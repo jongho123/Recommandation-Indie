@@ -1,10 +1,7 @@
 var http = require('http'),
     querystring = require('querystring');
 
-var fs = require('fs');
 var AWS = require('aws-sdk');
-var controller = {};
-
 AWS.config.loadFromPath('./controller/config.json');
 
 var inputFrame = [];
@@ -19,12 +16,56 @@ var options = {
   }
 };
 
+var fs = require('fs');
+var mongoose = require('mongoose'),
+    Log = mongoose.model('log'),
+    Track = mongoose.model('track'),
+    MusicInfo = mongoose.model('musicinfo');
+
+var controller = {};
+
+controller.play = function(req, res) {
+  console.log("in play");
+  var info;
+
+  if(req.body.info) {
+    info = JSON.parse(req.body.info);
+  } else {
+    var infodata = JSON.stringify({user_id: "guest", request: "play"});
+    info = JSON.parse(infodata);
+  }
+
+  if("user_id" in info && info.user_id !== '') {
+    var models = JSON.stringify({ user_id: info.user_id, request: info.request, log: req.body.infotest });
+    Log.create(JSON.parse(models), function(err) {
+      if(err) return console.log(err);
+    });
+  }
+
+  res.sendStatus(200);
+}
+
 controller.register = function(req, res) {
+  var info;
+
+  if(req.body.info) {
+    info = JSON.parse(req.body.info);
+  } else {
+    var infodata = JSON.stringify({user_id: "guest", request: "register"});
+    info = JSON.parse(infodata);
+  }
+
+  if("user_id" in info && info.user_id !== '') {
+    var models = JSON.stringify({ user_id: info.user_id, request: info.request, log: req.files.uploaded.originalname });
+    Log.create(JSON.parse(models), function(err) {
+      if(err) return console.log(err);
+    });
+  }	
 
   var oldPath = req.files.uploaded.path;
   var keyName = req.files.uploaded.originalname;
 
-  console.log('%s / %s', oldPath, keyName);
+  //console.log('%s / %s', oldPath, keyName);
 
   var params = { params: { Bucket: 'jhmusic', Key: keyName} };
   s3 = new AWS.S3(params);
@@ -55,14 +96,32 @@ var swit = true;
 var count = 0;
 
 controller.recommendation = function(req, res) {
+
+  var info;
+  var logString = '';
+
+  if(req.body.info ) {
+    info = JSON.parse(req.body.info);
+  } else {
+    var infodata = JSON.stringify({user_id: "guest", request: "recommendation"});
+    info = JSON.parse(infodata);
+  }
+
   s3 = new AWS.S3();
 
   if(swit) {
     var params = {Bucket: 'jhmusic', Key: '안부.mp3'};
-    console.log('play music 안부.mp3');
+    logString += '안부'
   } else {
     var params = {Bucket: 'jhmusic', Key: '재회.mp3'};
-    console.log('play music 재회.mp3');
+    logString += '재회'
+  }
+
+  if("user_id" in info && info.user_id !== '') {
+    var models = JSON.stringify({ user_id: info.user_id, request: info.request, log:logString });
+    Log.create(JSON.parse(models), function(err) {
+      if(err) return console.log(err);
+    });
   }
 
   var recoMusic = s3.getObject(params).createReadStream();
@@ -73,7 +132,7 @@ controller.recommendation = function(req, res) {
     dataLength += chunk.length;
   }).
   on('end', function() {
-    console.log('The length was : ' + dataLength);
+    //console.log('The length was : ' + dataLength);
     if(++count == 2) {
       count %= 2;
       if(swit) swit = false;
@@ -83,6 +142,22 @@ controller.recommendation = function(req, res) {
 };
 
 controller.list = function(req, res) {
+
+  var info;
+  if(req.body.info) {
+    info = JSON.parse(req.body.info);
+  } else {
+    var infoData = JSON.stringify({ user_id: "guest", request: "list" });
+    info = JSON.parse(infoData);
+  } 
+
+  if("user_id" in info && info.user_id !== '') {
+    var models = JSON.stringify({ user_id: info.user_id, request: info.request });
+    Log.create(JSON.parse(models), function(err) {
+      if(err) return console.log(err);
+    })
+  }
+
   var inputObj = new Object();
 
   inputObj.req_user_id = 'master';
@@ -97,9 +172,9 @@ controller.list = function(req, res) {
 
   options.path = '/soundnerd/user/nonshared_history',
   options.headers = {
-      'Content-Type':'application/x-www-form-urlencoded',
-      'Content-Length':input.length
-    }
+    'Content-Type':'application/x-www-form-urlencoded',
+    'Content-Length':input.length
+  }
 
   var bonaReq = http.request(options, function(bonaRes) {
     var body = '';
@@ -126,12 +201,12 @@ controller.list = function(req, res) {
         })
         .on('end', function() {
           var tracks = JSON.parse(body).tracks;
-          console.log(tracks);
+          //console.log(tracks);
 
           for( var i = 0; i < tracks.length; ++i ) {
             list.push(tracks[i].title);
           }
-          console.log(list);
+          //console.log(list);
 
           res.json(list);
         });
