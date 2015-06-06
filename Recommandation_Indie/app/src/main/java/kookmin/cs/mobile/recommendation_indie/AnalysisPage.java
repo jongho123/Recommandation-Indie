@@ -96,7 +96,7 @@ public class AnalysisPage extends ActionBarActivity {
 
               out.writeBytes("--" + boundary + "\r\n");
               out.writeBytes(
-                  "Content-Disposition: form-data;" + "name=\"info\";" + "\r\n");
+                  "Content-Disposition: form-data;" + "name=\"infotest\";" + "\r\n");
               out.writeBytes("\r\n");
               out.writeBytes("{\"title\":\"" + title + "\"," + "\"artist\":\"" + artist + "\","
                              + "\"album\":\"" + album + "\"}" + "\r\n");

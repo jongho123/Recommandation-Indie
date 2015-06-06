@@ -51,7 +51,7 @@ public class RegisterMusicPage extends ActionBarActivity implements View.OnClick
       public void run() {
 
         try {
-          url = new URL("http://52.68.82.234:19918");
+          url = new URL("http://52.68.82.234:19918/register");
           urlConnection = (HttpURLConnection) url.openConnection(); // HTTP 연결
 
           urlConnection.setDoInput(true);
