@@ -35,6 +35,7 @@ app.use(multer());
 app.use(logger(myLog, {stream: accessLogStream}));
 
 app.get('/', function(req, res) {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.end('안녕하세요. 추천인디 사이트입니다.');
 });
 
@@ -43,7 +44,7 @@ app.get('/music', controller.list);
 
 // register music test... 
 app.post('/register', controller.register);
-app.post('/play', controller.play);
+app.post('/analysis', controller.analysis);
 
 app.listen(port, function(err) {
   if(err) return console.log(err);
