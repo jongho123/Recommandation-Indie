@@ -57,6 +57,10 @@ public class AnalysisPage extends ActionBarActivity {
         adapter.addItem(
             new analysisMusicItem(cursor.getString(0), cursor.getString(1), cursor.getString(2),
                                   cursor.getString(3)));
+        if(adapter.getMusicList().size() == 1) {
+          RecommendationMusicPage.prevTitle = cursor.getString(0);
+          RecommendationMusicPage.prevArtist = cursor.getString(1);
+        }
       }
     }
 
@@ -67,6 +71,8 @@ public class AnalysisPage extends ActionBarActivity {
       public void run() {
         ArrayList<analysisMusicItem> items = adapter.getMusicList();
         for(int position=0; position < items.size(); position++) {
+          //Toast.makeText(getApplicationContext(), "" + position / items.size(), Toast.LENGTH_SHORT).show();
+
           try {
             url = new URL("http://52.68.82.234:19918/analysis");
             urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ����

@@ -1,15 +1,29 @@
 package kookmin.cs.mobile.recommendation_indie;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+
+import java.io.BufferedInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
@@ -28,6 +42,8 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    supportRequestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+
     setContentView(R.layout.activity_main);
 
     Button btnFind = (Button) findViewById(R.id.btn_music_finder);
@@ -35,6 +51,8 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
 
     btnFind.setOnClickListener(this);
     btnConfigure.setOnClickListener(this);
+
+
   }
 
   protected void onStart() {
@@ -78,6 +96,8 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   public boolean onCreateOptionsMenu(Menu menu) {
     // Inflate the menu; this adds items to the action bar if it is present.
     getMenuInflater().inflate(R.menu.menu_main, menu);
+    setSupportProgressBarIndeterminateVisibility(true);
+
     return true;
   }
 
@@ -92,6 +112,7 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     if (id == R.id.action_login) {
       startActivityForResult(new Intent(this, LoginPage.class), REQUEST_CODE_LOGIN);
       return true;
+    } else if (id == R.id.action_progress) {
     }
 
     return super.onOptionsItemSelected(item);
@@ -105,7 +126,7 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       startActivity(new Intent(this, RegisterMusicPage.class));
     } else if (v.getId() == R.id.btn_music_finder) {
       startActivity(new Intent(this, MusicFinder.class));
-    }else if (v.getId() == R.id.btn_configure) {
+    } else if (v.getId() == R.id.btn_configure) {
       startActivity(new Intent(this, AnalysisPage.class));
     }
   }

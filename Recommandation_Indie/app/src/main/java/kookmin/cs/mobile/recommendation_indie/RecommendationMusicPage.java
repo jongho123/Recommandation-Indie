@@ -3,11 +3,18 @@ package kookmin.cs.mobile.recommendation_indie;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import java.io.IOException;
+import org.json.JSONObject;
+
+import java.io.BufferedInputStream;
+import java.io.DataOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
@@ -28,9 +35,17 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   private int playbackPosition = 0;
   private boolean musicPlay = false;
   private boolean restart = false;
+  private boolean serverConnect = false;
 
   private Button btnPlay;
 
+  private URL url;
+  private HttpURLConnection urlConnection;
+  private static String boundary = "ABAB***ABAB";
+  private JSONObject recommendedMusic;
+
+  public static String prevTitle = "";
+  public static String prevArtist = "";
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -43,15 +58,18 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
     btnPlay.setOnClickListener(this);
     btnNext.setOnClickListener(this);
     btnPrev.setOnClickListener(this);
+
+    work.start();
   }
 
   @Override
   public void onClick(View v) {
     switch (v.getId()) {
       case R.id.btn_play:
-        if (!musicPlay) {
+        if (!musicPlay && !serverConnect) {
           icon2playing();
-          if (!restart) {
+          if (!restart ) {
+            serverConnect = true;
             playMusic();
           } else {
             mediaplayer.start();
@@ -77,21 +95,21 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   }
 
   protected void playMusic() {
-    try {
-      if (mediaplayer != null && mediaplayer.isPlaying()) {
-        releaseMusic();
-      }
+    if (mediaplayer != null && mediaplayer.isPlaying()) {
+      releaseMusic();
+    }
 
+    try {
       mediaplayer = new MediaPlayer();
       mediaplayer.reset();
-      mediaplayer.setDataSource(AUDIO_URL + "/recommendation");
+      mediaplayer.setDataSource(AUDIO_URL + "/streaming" + "/" + recommendedMusic.getString("url") + "/" + recommendedMusic.getString("track_id"));
+      mediaplayer.prepareAsync();
       mediaplayer.setOnPreparedListener(this);
       mediaplayer.setOnErrorListener(this);
       mediaplayer.setOnCompletionListener(this);
-      mediaplayer.prepareAsync();
       musicPlay = true;
       restart = true;
-    } catch (IOException e) {
+    } catch (Exception e) {
       e.printStackTrace();
     }
   }
@@ -153,7 +171,75 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   private void icon2playing() {
     btnPlay.setSelected(true);
   }
+
   private void icon2stoping() {
     btnPlay.setSelected(false);
   }
+
+  Thread work = new Thread(new Runnable() {
+    @Override
+    public void run() {
+      try {
+        Log.i("mytag", "come in connect");
+
+        url = new URL("http://52.68.82.234:19918/recommendation");
+        urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ����
+
+        urlConnection.setDoInput(true);
+        urlConnection.setDoOutput(true);
+        urlConnection.setUseCaches(false);
+
+        urlConnection.setRequestMethod("POST");
+        urlConnection
+            .setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+
+        DataOutputStream out = new DataOutputStream(urlConnection.getOutputStream());
+
+        out.writeBytes("--" + boundary + "\r\n");
+        out.writeBytes(
+            "Content-Disposition: form-data;" + "name=\"base\";" + "\r\n");
+        out.writeBytes("\r\n");
+
+        String title = new String(prevTitle.getBytes(), "ISO-8859-1");
+        String artist = new String(prevArtist.getBytes(), "ISO-8859-1");
+
+        out.writeBytes(
+            "{\"title\":\"" + title + "\"," + "\"artist\":\"" + artist + "\"}" + "\r\n");
+        out.flush();
+
+        out.writeBytes("--" + boundary + "\r\n");
+        out.writeBytes(
+            "Content-Disposition: form-data;" + "name=\"info\";" + "\r\n");
+        out.writeBytes("\r\n");
+        out.writeBytes("{\"user_id\":\"guest\"," + "\"request\":\"recommendation\"}" + "\r\n");
+        out.flush();
+        out.writeBytes("--" + boundary + "--\r\n");
+
+        out.flush();
+        out.close();
+
+        Log.i("mytag", "send message");
+
+        InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+
+        Log.i("mytag", "read message");
+
+        int data;
+        String res="";
+        while ((data = in.read()) != -1) {
+          res += (char)data;
+        }
+        in.close();
+
+        Log.i("mytag", res);
+        recommendedMusic = new JSONObject(res);
+        Log.i("mytag2",recommendedMusic.getString("url"));
+      } catch (Exception e) {
+        e.printStackTrace();
+      } finally {
+        urlConnection.disconnect();
+        serverConnect = false;
+      }
+    }
+  });
 }
