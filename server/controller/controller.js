@@ -24,6 +24,69 @@ var cp = require('child_process');
 
 var controller = {};
 
+controller.streaming = function(req, res) {
+  console.log(req.params);
+
+  var filename = './music/' + req.params.trackId;
+  fs.exists(filename + '.mp3', function(exists) {
+    if(exists) {
+      var musicstream = fs.createReadStream(filename + '.mp3');
+      musicstream.pipe(res);
+      musicstream.on('data', function(data) {
+        console.log("send data");
+      }).
+      on('end', function(){
+        console.log("end");
+      });
+    } else {
+      var youtubedl = cp.fork('./youtube-dl.js');
+      var body = "";
+ 
+      youtubedl.on('exit', function(code, signal) {
+        var musicstream = fs.createReadStream(filename + '.mp3');
+        musicstream.pipe(res);
+        musicstream.on('data', function(data) {
+          body += data;
+          console.log("send data");
+        }).
+        on('end', function(){
+          console.log("end");
+          var extract = cp.fork("./extract");
+          extract.on('exit', function(code, signal) {
+            var featurebody="";
+            var fstream = fs.createReadStream(filename + ".txt");
+            fstream.on('data', function(data) {
+              featurebody += data;
+            }).
+            on('end', function(){
+              var models = JSON.stringify({ track_id: req.params.trackId });
+              MusicInfo.find(JSON.parse(models), function(err, tracks) {
+                if(err) console.log("track create err");
+                else if(tracks.length == 0) console.log("streaming not music track");
+                else {
+                  var models = JSON.stringify({ title: tracks[0].title, artist: tracks[0].artist, feature: featurebody });
+                  Track.create(JSON.parse(models), function(err) {
+                    if(err) console.log("track create err");
+                    else console.log("create tracks");
+                  });
+                }
+              });
+
+              fs.unlink(filename + ".txt");
+            });
+          });
+ 
+          extract.send({ input: filename + ".mp3", output: filename + ".txt" });
+        });
+      });
+
+      youtubedl.send({ url: "https://www.youtube.com/watch?v=" + req.params.videoId, filename: filename + ".m4a" });
+      console.log("exec youtube-dl");
+    }
+  });
+  
+}
+
 controller.analysis = function(req, res) {
 
   var info;
@@ -74,7 +137,6 @@ controller.analysis = function(req, res) {
     info = JSON.parse(infodata);
   }
   
-
   if("user_id" in info && info.user_id !== '') {
     var models = JSON.stringify({ user_id: info.user_id, request: info.request, log: req.body.infotest });
     Log.create(JSON.parse(models), function(err) {
@@ -135,6 +197,8 @@ controller.register = function(req, res) {
 //var swit = true;
 //var count = 0;
 controller.recommendation = function(req, res) {
+  console.log(req.body.base);
+  console.log(req.body.info);
 
   var info;
   var logString = '';
@@ -142,6 +206,11 @@ controller.recommendation = function(req, res) {
   info = JSON.parse(req.body.info); 
 
   Track.find(JSON.parse(req.body.base), function(err, tracks) {
+    if(err) console.log("recommendation track find error");
+    if(tracks.length == 0) { 
+      console.log("no tracks");
+    }
+ 
     var inputObj = new Object();
 
     inputObj.feature = tracks[0].feature;
@@ -161,18 +230,20 @@ controller.recommendation = function(req, res) {
         body += chunk; 
       })
       .on('end', function() {
+        console.log('--------------------------------------------------similar search----------');
+        console.log(JSON.parse(body));
         var tracks = JSON.parse(body).tracks;
 
-        var inputObj = new Object();
+        var searchObj = new Object();
          
-        inputObj.artist = tracks[0].artist;
-        inputObj.title = tracks[0].title;
-        inputObj.start = 0;
-        inputObj.count = 1;
+        searchObj.artist = tracks[0].artist;
+        searchObj.title = tracks[0].title;
+        searchObj.start = 0;
+        searchObj.count = 1;
         
-        var input = querystring.stringify({ 'data' : JSON.stringify(inputObj) }); 
+        var input = querystring.stringify({ 'data' : JSON.stringify(searchObj) }); 
 
-        options.path = '/soundnerd/music/similar',
+        options.path = '/soundnerd/music/search',
         options.headers = {
           'Content-Type':'application/x-www-form-urlencoded',
           'Content-Length':input.length
@@ -184,28 +255,95 @@ controller.recommendation = function(req, res) {
             body += chunk; 
           })
           .on('end', function() {
-            var tracks = JSON.parse(body).tracks;
-            res.end(querystring.stringify({ 'data' : JSON.stringify({ url: tracks[0].url }) }));
+	    console.log('-------------------------------------search raw data--------------------');
+	    console.log(body);
+            console.log('--------------------------------------------------result search----------');
+            console.log(JSON.parse(body));
+            var recommendedTrack = JSON.parse(body).tracks[0];
+            var videoId = recommendedTrack.url.split('v=')[1];
+            res.end(JSON.stringify({ track_id: recommendedTrack.track_id, url: videoId }));
+            
+            /*
+            var youtubedl = cp.fork('./youtube-dl.js');
+            var filename = "./" + tracks[0].title + "-" + track[0].artist;
 
+            youtubedl.on('exit', function(code, signal) {
+
+              var musicstream = fs.createReadStream(filename + ".mp4");
+              var body = "";
+
+              musicstream.pipe(res);
+
+              musicstream.on('data', function(data) {
+                body += data;
+              }).
+              on('end', function(){
+                console.log(body);
+                var extract = cp.fork("./extract");
+                extract.on('exit', function(code, signal) {
+                  var featurebody="";
+                  var fstream = fs.createReadStream(filename + ".txt"); 
+                  fstream.on('data', function(data) {
+                    featurebody += data; 
+                  }).
+                  on('end', function(){
+                    var models = JSON.stringify({ title: tracks[0].title, artist: tracks[0].artist, feature: featurebody });
+                    Track.create(JSON.parse(models), function(err) {
+                      if(err) console.log("track create err");
+                      else console.log("create tracks");
+                    })
+
+                    fs.unlink(filename + ".mp4");
+                    fs.unlink(filename + ".txt");
+                  });
+                });
+
+                extract.send({ input: filename + ".mp4", output: filename + ".txt" }); 
+              }); 
+            });
+
+            youtubedl.send({ url: tracks[0].url, filename: filename });
+            */
             if (!info.user_id) {
-              var infodata = JSON.stringify({user_id: "guest", request: info.request, log: tracks[0].title + "-" + tracks[0].artist});
+              var infodata = JSON.stringify({user_id: "guest", request: info.request, log: recommendedTrack.title + "-" + recommendedTrack.artist});
             } else {
-              var infodata = JSON.stringify({user_id: info.user_id, request: info.request, log: tracks[0].title + "-" + tracks[0].artist});
+              var infodata = JSON.stringify({user_id: info.user_id, request: info.request, log: recommendedTrack.title + "-" + recommendedTrack.artist});
             }
             info = JSON.parse(infodata);
 
             if("user_id" in info && info.user_id !== '') {
-              var models = JSON.stringify({ user_id: info.user_id, request: info.request, log:logString });
+              var models = JSON.stringify({ user_id: info.user_id, request: info.request, log:info.log });
               Log.create(JSON.parse(models), function(err) {
                 if(err) return console.log(err);
               });
             }
 
-            MusicInfo.find(JSON.parse(JSON.stringify({ track_id: tracks[0].track_id })), function(err, tracks) {
-              if( err ) console.log("----------------------------|||||zero err???|||--------------"); 
-              if( tracks.length == 0) console.log("-isisisisisis ZZZero");
+            MusicInfo.find(JSON.parse(JSON.stringify({ track_id: tracks[0].track_id })), function(err, track) {
+              if (err) console.log("MusicInfo find error"); 
+              if (track.length == 0) {
+                var createObj = new Object(); 
+                createObj.track_id = tracks[0].track_id;
+                createObj.artist = tracks[0].artist;
+                createObj.title = tracks[0].titls;
+                createObj.like = 0;
+                createObj.unlike = 0;
+                createObj.count = 1;
+
+                var models = JSON.stringify(createObj);
+                MusicInfo.create(JSON.parse(models), function(err) {
+                  if(err) return console.log(err);
+                });
+              } else {
+                var models = JSON.stringify({ track_id : track[0].track_id });
+                MusicInfo.update(JSON.parse(models), { count: ++track[0].count }, function(err, track){
+                  if(err) console.log(err);
+                  else {
+                    //console.log(track);
+                  }
+                });
+              }
  
-              console.log("complete MusicInfo find");
+              //console.log("complete MusicInfo find");
             });
             
           });

@@ -20,8 +20,11 @@ mongoose.connect('mongodb://localhost/recommendationIndie');
 var controller = require('./controller/controller');
 
 var logDirectory = __dirname + '/log';
+var musicDirectory = __dirname + '/music';
+
 var FileStreamRotator = require('file-stream-rotator');
 fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
+fs.existsSync(musicDirectory) || fs.mkdirSync(musicDirectory);
 
 var accessLogStream = FileStreamRotator.getStream({
   filename: logDirectory + '/access-%DATE%.log',
@@ -39,8 +42,9 @@ app.get('/', function(req, res) {
   res.end('안녕하세요. 추천인디 사이트입니다.');
 });
 
-app.get('/recommendation', controller.recommendation);
 app.get('/music', controller.list);
+app.get('/streaming/:videoId/:trackId', controller.streaming);
+app.post('/recommendation', controller.recommendation);
 
 // register music test... 
 app.post('/register', controller.register);
