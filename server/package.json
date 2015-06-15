@@ -10,7 +10,8 @@
     "multer":"*",
     "aws-sdk":"*",
     "file-stream-rotator":"*",
-    "mongoose":"*"
+    "mongoose":"*",
+    "iconv":"*"
   },
   "author": "Jongho Lim",
   "license": "ISC"

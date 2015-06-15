@@ -38,12 +38,17 @@ app.use(multer());
 app.use(logger(myLog, {stream: accessLogStream}));
 
 app.get('/', function(req, res) {
+  console.log('comin');
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.end('안녕하세요. 추천인디 사이트입니다.');
 });
 
+app.get('/like/:trackId/:userId', controller.like); 
+app.get('/unlike/:trackId/:userId', controller.unlike);
+
 app.get('/music', controller.list);
 app.get('/streaming/:videoId/:trackId', controller.streaming);
+app.get('/musicinfo/:videoId/:trackId/:userId', controller.musicinfo);
 app.post('/recommendation', controller.recommendation);
 
 // register music test... 
