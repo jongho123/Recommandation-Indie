@@ -12,7 +12,6 @@ public class analysisMusicView extends LinearLayout {
 
   private TextView txtMusicTitle;
   private TextView txtMusicArtist;
-  private TextView txtMusicData;
 
   public analysisMusicView(Context context) {
     super(context);
@@ -23,7 +22,6 @@ public class analysisMusicView extends LinearLayout {
 
     txtMusicTitle = (TextView) findViewById(R.id.txt_music_title);
     txtMusicArtist = (TextView) findViewById(R.id.txt_music_artist);
-    txtMusicData = (TextView) findViewById(R.id.txt_music_data);
   }
 
   public analysisMusicView(Context context, analysisMusicItem aItem) {
@@ -35,11 +33,9 @@ public class analysisMusicView extends LinearLayout {
 
     txtMusicTitle = (TextView) findViewById(R.id.txt_music_title);
     txtMusicArtist = (TextView) findViewById(R.id.txt_music_artist);
-    txtMusicData = (TextView) findViewById(R.id.txt_music_data);
 
     txtMusicTitle.setText(aItem.getData(0));
     txtMusicArtist.setText(aItem.getData(1));
-    txtMusicData.setText(aItem.getData(2));
   }
 
   public void setText(int index, String data) {
@@ -49,9 +45,6 @@ public class analysisMusicView extends LinearLayout {
         break;
       case 1 :
         txtMusicArtist.setText(data);
-        break;
-      case 2 :
-        txtMusicData.setText(data);
         break;
     }
   }

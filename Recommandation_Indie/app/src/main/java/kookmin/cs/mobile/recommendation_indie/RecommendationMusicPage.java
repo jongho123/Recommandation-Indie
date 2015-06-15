@@ -1,20 +1,36 @@
 package kookmin.cs.mobile.recommendation_indie;
 
+import android.content.ContentValues;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
@@ -36,8 +52,16 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   private boolean musicPlay = false;
   private boolean restart = false;
   private boolean serverConnect = false;
+  private boolean ableEvolution = false;
 
   private Button btnPlay;
+  private TextView musicName;
+  private ImageView thumbImg;
+  private Button btnLike;
+  private Button btnUnlike;
+  private Bitmap thumbnail;
+
+  private Handler handler;
 
   private URL url;
   private HttpURLConnection urlConnection;
@@ -46,50 +70,188 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
 
   public static String prevTitle = "";
   public static String prevArtist = "";
+  public static final int REQUEST_CODE_RECOM = 1002;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_muisc_recommendation);
 
+    thumbImg = (ImageView) findViewById(R.id.img_recommendation_music);
     btnPlay = (Button) findViewById(R.id.btn_play);
     Button btnNext = (Button) findViewById(R.id.btn_next_play);
     Button btnPrev = (Button) findViewById(R.id.btn_prev_play);
+    btnLike = (Button) findViewById(R.id.btn_recommendation_like);
+    btnUnlike = (Button) findViewById(R.id.btn_recommendation_unlike);
 
+    musicName = (TextView) findViewById(R.id.txt_recommendation_music_title);
     btnPlay.setOnClickListener(this);
     btnNext.setOnClickListener(this);
     btnPrev.setOnClickListener(this);
+    btnLike.setOnClickListener(this);
+    btnUnlike.setOnClickListener(this);
 
-    work.start();
+    handler = new Handler() {
+      public void handleMessage(Message msg) {
+        switch (msg.what) {
+          case 0:
+            try {
+              mediaplayer = new MediaPlayer();
+
+              mediaplayer.setOnPreparedListener(RecommendationMusicPage.this);
+              mediaplayer.setOnErrorListener(RecommendationMusicPage.this);
+              mediaplayer.setOnCompletionListener(RecommendationMusicPage.this);
+
+              mediaplayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+              mediaplayer.reset();
+              mediaplayer.setDataSource(
+                  AUDIO_URL + "/streaming" + "/" + recommendedMusic.getString("url") + "/"
+                  + recommendedMusic.getString("track_id"));
+              Log.i("mytag5", "whatwahtwahtwhatwhatwhathwathwathwahtwaht");
+
+              mediaplayer.prepareAsync();
+
+              musicName.setText(
+                  recommendedMusic.getString("title") + " - " + recommendedMusic
+                      .getString("artist"));
+              btnLike.setText("" + recommendedMusic.getInt("like"));
+              btnUnlike.setText("" + recommendedMusic.getInt("unlike"));
+              thumbImg.setImageBitmap(thumbnail);
+
+              prevTitle = recommendedMusic.getString("title");
+              prevArtist = recommendedMusic.getString("artist");
+
+              ContentValues recordValues = new ContentValues();
+              recordValues.put("title", recommendedMusic.getString("title"));
+              recordValues.put("artist", recommendedMusic.getString("artist"));
+              recordValues.put("url", recommendedMusic.getString("url"));
+              recordValues.put("track_id", recommendedMusic.getString("track_id"));
+
+              MainPage.db.insert(MainPage.TABLE_NAME, null, recordValues);
+
+              musicPlay = true;
+              restart = true;
+            } catch (Exception e) {
+              e.printStackTrace();
+            }
+            break;
+          case 1:
+            try {
+              btnLike.setText("" + recommendedMusic.getInt("like"));
+            } catch (JSONException e) {
+              e.printStackTrace();
+            }
+            break;
+          case 2:
+            try {
+              btnUnlike.setText("" + recommendedMusic.getInt("unlike"));
+            } catch (JSONException e) {
+              e.printStackTrace();
+            }
+            break;
+        }
+      }
+    };
   }
 
   @Override
   public void onClick(View v) {
     switch (v.getId()) {
       case R.id.btn_play:
-        if (!musicPlay && !serverConnect) {
-          icon2playing();
-          if (!restart ) {
-            serverConnect = true;
-            playMusic();
+        if (!serverConnect) {
+
+          if (!musicPlay) {
+            icon2playing();
+            if (!restart) {
+              playMusic();
+            } else {
+              serverConnect = false;
+              mediaplayer.start();
+              mediaplayer.seekTo(playbackPosition);
+              musicPlay = !musicPlay;
+              Toast.makeText(getApplicationContext(), "음악 파일 재생 재시작됨", Toast.LENGTH_SHORT).show();
+            }
           } else {
-            mediaplayer.start();
-            mediaplayer.seekTo(playbackPosition);
+            serverConnect = false;
+            icon2stoping();
+            playbackPosition = mediaplayer.getCurrentPosition();
+            mediaplayer.pause();
             musicPlay = !musicPlay;
-            Toast.makeText(getApplicationContext(), "음악 파일 재생 재시작됨", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "음악 파일 재생 중지됨", Toast.LENGTH_SHORT).show();
           }
-        } else {
-          icon2stoping();
-          playbackPosition = mediaplayer.getCurrentPosition();
-          mediaplayer.pause();
-          musicPlay = !musicPlay;
-          Toast.makeText(getApplicationContext(), "음악 파일 재생 중지됨", Toast.LENGTH_SHORT).show();
         }
         break;
 
       case R.id.btn_prev_play:
       case R.id.btn_next_play:
-        icon2playing();
-        playMusic();
+        if (!serverConnect) {
+          icon2playing();
+          playMusic();
+        }
+        break;
+      case R.id.btn_recommendation_like:
+        if (ableEvolution) {
+          new Thread(new Runnable() {
+            @Override
+            public void run() {
+              URL url;
+              HttpURLConnection urlConnection;
+              try {
+                url =
+                    new URL("http://52.68.82.234:19918/like" + "/" + recommendedMusic
+                        .getString("track_id") + "/" + MainPage.USER_ID);
+                urlConnection = (HttpURLConnection) url.openConnection();
+
+                urlConnection.setDoInput(true);
+                urlConnection.setUseCaches(false);
+
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+
+                String res = reader.readLine();
+                in.close();
+
+                recommendedMusic.put("like", Integer.parseInt(res));
+                handler.sendEmptyMessage(1);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+            }
+          }).start();
+        }
+        break;
+      case R.id.btn_recommendation_unlike:
+        if (ableEvolution) {
+
+          new Thread(new Runnable() {
+            @Override
+            public void run() {
+              URL url;
+              HttpURLConnection urlConnection;
+              try {
+                url =
+                    new URL("http://52.68.82.234:19918/unlike" + "/" + recommendedMusic
+                        .getString("track_id") + "/" + MainPage.USER_ID);
+                urlConnection = (HttpURLConnection) url.openConnection();
+
+                urlConnection.setDoInput(true);
+                urlConnection.setUseCaches(false);
+
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+
+                String res = reader.readLine();
+                in.close();
+
+                recommendedMusic.put("unlike", Integer.parseInt(res));
+                handler.sendEmptyMessage(2);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+            }
+          }).start();
+        }
         break;
     }
   }
@@ -98,20 +260,96 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
     if (mediaplayer != null && mediaplayer.isPlaying()) {
       releaseMusic();
     }
+    serverConnect = true;
 
-    try {
-      mediaplayer = new MediaPlayer();
-      mediaplayer.reset();
-      mediaplayer.setDataSource(AUDIO_URL + "/streaming" + "/" + recommendedMusic.getString("url") + "/" + recommendedMusic.getString("track_id"));
-      mediaplayer.prepareAsync();
-      mediaplayer.setOnPreparedListener(this);
-      mediaplayer.setOnErrorListener(this);
-      mediaplayer.setOnCompletionListener(this);
-      musicPlay = true;
-      restart = true;
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          url = new URL("http://52.68.82.234:19918/recommendation");
+          urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ????
+
+          urlConnection.setDoInput(true);
+          urlConnection.setDoOutput(true);
+          urlConnection.setUseCaches(false);
+
+          urlConnection.setRequestMethod("POST");
+          urlConnection
+              .setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+
+          DataOutputStream out = new DataOutputStream(urlConnection.getOutputStream());
+
+          out.writeBytes("--" + boundary + "\r\n");
+          out.writeBytes(
+              "Content-Disposition: form-data;" + "name=\"base\";" + "\r\n");
+          out.writeBytes("\r\n");
+
+          String title = new String(prevTitle.getBytes(), "ISO-8859-1");
+          String artist = new String(prevArtist.getBytes(), "ISO-8859-1");
+          String user_id = new String(MainPage.USER_ID.getBytes(), "ISO-8859-1");
+          out.writeBytes(
+              "{\"title\":\"" + title + "\"," + "\"artist\":\"" + artist + "\"}" + "\r\n");
+          out.flush();
+
+          out.writeBytes("--" + boundary + "\r\n");
+          out.writeBytes(
+              "Content-Disposition: form-data;" + "name=\"info\";" + "\r\n");
+          out.writeBytes("\r\n");
+          out.writeBytes(
+              "{\"user_id\":\"" + user_id + "\"," + "\"request\":\"recommendation\"}" + "\r\n");
+          out.flush();
+          out.writeBytes("--" + boundary + "--\r\n");
+
+          out.flush();
+          out.close();
+
+          InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+
+          int data;
+          String res = "";
+          while ((data = in.read()) != -1) {
+            res += (char) data;
+          }
+          in.close();
+
+          Charset charset = Charset.forName("ISO-8859-1");
+          ByteBuffer buff = charset.encode(res);
+
+          charset = Charset.forName("UTF-8");
+          recommendedMusic = new JSONObject(charset.decode(buff).toString());
+          Log.i("mytag", recommendedMusic.toString());
+
+          new Thread(new Runnable() {
+            @Override
+            public void run() {
+              URL url;
+              HttpURLConnection urlConnection;
+              try {
+                url =
+                    new URL("http://img.youtube.com/vi/" + recommendedMusic.getString("url")
+                            + "/default.jpg");
+                urlConnection = (HttpURLConnection) url.openConnection();
+
+                urlConnection.setDoInput(true);
+                urlConnection.setUseCaches(false);
+
+                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                thumbnail = BitmapFactory.decodeStream(in);
+                in.close();
+                handler.sendEmptyMessage(0);
+              } catch (Exception e) {
+                e.printStackTrace();
+              }
+            }
+          }).start();
+
+        } catch (Exception e) {
+          e.printStackTrace();
+        } finally {
+          urlConnection.disconnect();
+        }
+      }
+    }).start();
   }
 
   // music player 메모리 해제
@@ -119,6 +357,8 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
     if (mediaplayer != null) {
       try {
         mediaplayer.release();
+        mediaplayer = null;
+        ableEvolution = false;
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -137,6 +377,10 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
   @Override
   public void onPrepared(MediaPlayer mediaPlayer) {
     mediaplayer.start();
+    serverConnect = false;
+    ableEvolution = true;
+    Log.i("mytag5", "whatwahtwahtwhatwhatwhathwathwathwahtwaht~~~~~~~~~~~~");
+
     Toast.makeText(getApplicationContext(), "음악 파일 재생 시작됨", Toast.LENGTH_SHORT).show();
   }
 
@@ -176,70 +420,116 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
     btnPlay.setSelected(false);
   }
 
-  Thread work = new Thread(new Runnable() {
-    @Override
-    public void run() {
-      try {
-        Log.i("mytag", "come in connect");
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    //Inflate the menu; this adds items to the action bar if it is present.
+    getMenuInflater().inflate(R.menu.menu_recommendation, menu);
 
-        url = new URL("http://52.68.82.234:19918/recommendation");
-        urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ����
+    return true;
+  }
 
-        urlConnection.setDoInput(true);
-        urlConnection.setDoOutput(true);
-        urlConnection.setUseCaches(false);
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    // Handle action bar item clicks here. The action bar will
+    // automatically handle clicks on the Home/Up button, so long
+    // as you specify a parent activity in AndroidManifest.xml.
+    int id = item.getItemId();
 
-        urlConnection.setRequestMethod("POST");
-        urlConnection
-            .setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
-
-        DataOutputStream out = new DataOutputStream(urlConnection.getOutputStream());
-
-        out.writeBytes("--" + boundary + "\r\n");
-        out.writeBytes(
-            "Content-Disposition: form-data;" + "name=\"base\";" + "\r\n");
-        out.writeBytes("\r\n");
-
-        String title = new String(prevTitle.getBytes(), "ISO-8859-1");
-        String artist = new String(prevArtist.getBytes(), "ISO-8859-1");
-
-        out.writeBytes(
-            "{\"title\":\"" + title + "\"," + "\"artist\":\"" + artist + "\"}" + "\r\n");
-        out.flush();
-
-        out.writeBytes("--" + boundary + "\r\n");
-        out.writeBytes(
-            "Content-Disposition: form-data;" + "name=\"info\";" + "\r\n");
-        out.writeBytes("\r\n");
-        out.writeBytes("{\"user_id\":\"guest\"," + "\"request\":\"recommendation\"}" + "\r\n");
-        out.flush();
-        out.writeBytes("--" + boundary + "--\r\n");
-
-        out.flush();
-        out.close();
-
-        Log.i("mytag", "send message");
-
-        InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-
-        Log.i("mytag", "read message");
-
-        int data;
-        String res="";
-        while ((data = in.read()) != -1) {
-          res += (char)data;
-        }
-        in.close();
-
-        Log.i("mytag", res);
-        recommendedMusic = new JSONObject(res);
-        Log.i("mytag2",recommendedMusic.getString("url"));
-      } catch (Exception e) {
-        e.printStackTrace();
-      } finally {
-        urlConnection.disconnect();
-        serverConnect = false;
-      }
+    //noinspection SimplifiableIfStatement
+    if (id == R.id.action_list) {
+      startActivityForResult(new Intent(this, ActivityListTab.class), REQUEST_CODE_RECOM);
+      return true;
     }
-  });
+
+    return super.onOptionsItemSelected(item);
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent Data) {
+    super.onActivityResult(requestCode, resultCode, Data);
+
+    if (requestCode == REQUEST_CODE_RECOM && resultCode == RESULT_OK) {
+      prevTitle = Data.getExtras().getString("title");
+      prevArtist = Data.getExtras().getString("artist");
+
+      if (!serverConnect) {
+        icon2playing();
+        playMusic();
+      }
+
+      Toast.makeText(getApplicationContext(), "선택하여 재생", Toast.LENGTH_SHORT).show();
+    } else if (requestCode == REQUEST_CODE_RECOM && resultCode == 2000) {
+      if (mediaplayer != null) {
+        if (mediaplayer.isPlaying()) {
+          mediaplayer.stop();
+          mediaplayer.reset();
+          mediaplayer.release();
+        }
+      }
+
+      final String URL = Data.getStringExtra("url");
+      final String Vidos = Data.getStringExtra("track_id");
+
+      icon2playing();
+      serverConnect = true;
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            url = new URL("http://52.68.82.234:19918/musicinfo/" + URL + "/" + Vidos + "/" + MainPage.USER_ID);
+            urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ????
+
+            urlConnection.setDoInput(true);
+            urlConnection.setUseCaches(false);
+
+            urlConnection.setRequestMethod("GET");
+            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+
+            int data;
+            String res = "";
+            while ((data = in.read()) != -1) {
+              res += (char) data;
+            }
+            in.close();
+
+            Charset charset = Charset.forName("ISO-8859-1");
+            ByteBuffer buff = charset.encode(res);
+
+            charset = Charset.forName("UTF-8");
+            recommendedMusic = new JSONObject(charset.decode(buff).toString());
+            Log.i("mytag", recommendedMusic.toString());
+
+            new Thread(new Runnable() {
+              @Override
+              public void run() {
+                URL url;
+                HttpURLConnection urlConnection;
+                try {
+                  url =
+                      new URL("http://img.youtube.com/vi/" + recommendedMusic.getString("url")
+                              + "/default.jpg");
+                  urlConnection = (HttpURLConnection) url.openConnection();
+
+                  urlConnection.setDoInput(true);
+                  urlConnection.setUseCaches(false);
+
+                  InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                  thumbnail = BitmapFactory.decodeStream(in);
+                  in.close();
+                  handler.sendEmptyMessage(0);
+                } catch (Exception e) {
+                  e.printStackTrace();
+                }
+              }
+            }).start();
+
+          } catch (Exception e) {
+            e.printStackTrace();
+          } finally {
+            urlConnection.disconnect();
+          }
+        }
+      }).start();
+    }
+  }
 }

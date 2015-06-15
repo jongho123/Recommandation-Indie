@@ -1,7 +1,6 @@
 package kookmin.cs.mobile.recommendation_indie;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -42,10 +41,8 @@ public class analysisMusicListAdapter extends BaseAdapter {
       itemView = (analysisMusicView) convertView;
     }
 
-    Log.i("mytag2", mItems.get(position).getData(0) + " " + mItems.get(position).getData(1) + " " + mItems.get(position).getData(2));
     itemView.setText(0, mItems.get(position).getData(0));
     itemView.setText(1, mItems.get(position).getData(1));
-    itemView.setText(2, mItems.get(position).getData(2));
     return itemView;
   }
 

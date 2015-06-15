@@ -3,15 +3,34 @@
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:gravity="center"
-              android:background="@drawable/recommandation_background">
+              android:gravity="center_horizontal"
+              android:background="@drawable/recommendation_background">
 
-    <ImageView android:id="@+id/img_recommandation_music"
+    <LinearLayout android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginRight="20dp"
+                  android:layout_marginTop="20dp"
+                  android:layout_marginBottom="30dp"
+                  android:gravity="end">
+
+        <Button android:id="@+id/btn_recommendation_like"
+                   android:layout_width="50dp"
+                   android:layout_height="50dp"
+                   android:layout_marginRight="10dp"
+                   android:background="@drawable/like"/>
+
+        <Button android:id="@+id/btn_recommendation_unlike"
+                   android:layout_width="50dp"
+                   android:layout_height="50dp"
+                   android:background="@drawable/unlike"/>
+
+    </LinearLayout>
+    <ImageView android:id="@+id/img_recommendation_music"
                android:layout_width="200dp"
                android:layout_height="200dp"
-               android:src="@drawable/recommandation_image"/>
+               android:src="@drawable/recommendation_image"/>
 
-    <TextView android:id="@+id/txt_recommandation_music_title"
+    <TextView android:id="@+id/txt_recommendation_music_title"
               android:layout_width="wrap_content"
               android:layout_height="wrap_content"
               android:text="Test-Test"/>

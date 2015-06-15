@@ -2,9 +2,8 @@ package kookmin.cs.mobile.recommendation_indie;
 
 import android.content.Intent;
 import android.database.Cursor;
-import android.os.AsyncTask;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -15,15 +14,6 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
-
-import java.io.BufferedInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
 
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
@@ -38,6 +28,11 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
 
   private static final int REQUEST_CODE_LOGIN = 1001;
   private boolean singer = false;
+  public static String USER_ID = "guest";
+
+  public static String DATABASE_NAME = "recommendationIndie";
+  public static String TABLE_NAME = "playlist";
+  public static SQLiteDatabase db;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +47,30 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     btnFind.setOnClickListener(this);
     btnConfigure.setOnClickListener(this);
 
+    db = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
 
+    //db.execSQL("drop table if exists " + TABLE_NAME);
+    try {
+      db.execSQL("create table " + TABLE_NAME + "("
+                 + " _id integer PRIMARY KEY autoincrement, "
+                 + " title text, "
+                 + " artist text, "
+                 + " url text, "
+                 + " track_id text);");
+    } catch (Exception ex) {
+      Log.e("mytag", "Exception in CREATE_SQL", ex);
+    }
+    String[] columns = {"title", "artist", "url", "track_id"};
+    Cursor c1 = MainPage.db.query(MainPage.TABLE_NAME, columns, null, null, null, null, "_id", "0, 10");
+
+    if(c1.getCount() != 0) {
+      c1.moveToLast();
+      c1.moveToPrevious();
+      RecommendationMusicPage.prevTitle = c1.getString(0);
+      RecommendationMusicPage.prevArtist = c1.getString(1);
+    }
+    Log.i("mytag", "title : " + RecommendationMusicPage.prevTitle + "  artist : " + RecommendationMusicPage.prevArtist);
+    c1.close();
   }
 
   protected void onStart() {
@@ -82,11 +100,12 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     super.onActivityResult(requestCode, resultCode, Data);
 
     if (requestCode == REQUEST_CODE_LOGIN && resultCode == RESULT_OK) {
-      if (Data.getExtras().getInt("user") == 1) {
+      if (Data.getIntExtra("user", 0) == 1) {
         singer = true;
       } else {
         singer = false;
       }
+      USER_ID = Data.getStringExtra("user_id");
 
       Toast.makeText(getApplicationContext(), "" + singer, Toast.LENGTH_SHORT).show();
     }
@@ -96,7 +115,6 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   public boolean onCreateOptionsMenu(Menu menu) {
     // Inflate the menu; this adds items to the action bar if it is present.
     getMenuInflater().inflate(R.menu.menu_main, menu);
-    setSupportProgressBarIndeterminateVisibility(true);
 
     return true;
   }
@@ -110,9 +128,12 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
 
     //noinspection SimplifiableIfStatement
     if (id == R.id.action_login) {
+      if(!USER_ID.equalsIgnoreCase("guest")) {
+        Toast.makeText(getApplicationContext(), "이미 로그인 하셨습니다", Toast.LENGTH_SHORT).show();
+        return true;
+      }
       startActivityForResult(new Intent(this, LoginPage.class), REQUEST_CODE_LOGIN);
       return true;
-    } else if (id == R.id.action_progress) {
     }
 
     return super.onOptionsItemSelected(item);
@@ -126,8 +147,6 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       startActivity(new Intent(this, RegisterMusicPage.class));
     } else if (v.getId() == R.id.btn_music_finder) {
       startActivity(new Intent(this, MusicFinder.class));
-    } else if (v.getId() == R.id.btn_configure) {
-      startActivity(new Intent(this, AnalysisPage.class));
     }
   }
 }

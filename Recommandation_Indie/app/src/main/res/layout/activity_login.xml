@@ -14,7 +14,8 @@
                    android:layout_marginRight="10dp"
                    android:src="@drawable/login_id"/>
 
-        <EditText android:layout_width="100dp"
+        <EditText android:id="@+id/edit_user_id"
+                  android:layout_width="100dp"
                   android:layout_height="wrap_content"
                   android:hint="username"/>
     </LinearLayout>
@@ -27,7 +28,8 @@
                   android:layout_marginRight="5dp"
                   android:src="@drawable/login_pw"/>
 
-        <EditText android:layout_width="100dp"
+        <EditText android:id="@+id/edit_pass"
+                  android:layout_width="100dp"
                   android:layout_height="wrap_content"
                   android:inputType="textPassword"
                   android:hint="password"/>
@@ -38,13 +40,13 @@
                   android:layout_height="wrap_content"
                   android:layout_marginTop="20dp">
 
-        <Button android:id="@+id/btn_sign_up"
+        <Button android:id="@+id/btn_sign_in"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginRight="10dp"
                 android:background="@drawable/login_signin"/>
 
-        <Button android:id="@+id/btn_sign_in"
+        <Button android:id="@+id/btn_sign_up"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginLeft="10dp"

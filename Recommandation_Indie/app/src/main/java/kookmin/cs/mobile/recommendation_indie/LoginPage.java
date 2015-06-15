@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 
 /**
@@ -18,13 +19,17 @@ import android.widget.Toast;
  */
 public class LoginPage extends ActionBarActivity implements View.OnClickListener {
 
+  private EditText editUserId;
+  private EditText editPass;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_login);
 
     Button btnSignUp = (Button) findViewById(R.id.btn_sign_up);
-
+    editUserId = (EditText) findViewById(R.id.edit_user_id);
+    editPass = (EditText) findViewById(R.id.edit_pass);
     /* test button */
     Button btnListener = (Button) findViewById(R.id.btn_sign_in);
     Button btnSinger = (Button) findViewById(R.id.btn_singer);
@@ -36,6 +41,7 @@ public class LoginPage extends ActionBarActivity implements View.OnClickListener
 
   @Override
   public void onClick(View v) {
+
     switch (v.getId()) {
       case R.id.btn_sign_up:
         Toast.makeText(getApplicationContext(), "sign up", Toast.LENGTH_SHORT).show();
@@ -44,6 +50,12 @@ public class LoginPage extends ActionBarActivity implements View.OnClickListener
         Toast.makeText(getApplicationContext(), "sign in", Toast.LENGTH_SHORT).show();
         Intent resultSignin = new Intent();
         resultSignin.putExtra("user", 0);
+        if(!editUserId.getText().toString().equalsIgnoreCase("")) {
+          resultSignin.putExtra("user_id", editUserId.getText().toString());
+        } else {
+          Toast.makeText(getApplicationContext(), "id를 입력해주세요.", Toast.LENGTH_SHORT).show();
+          break;
+        }
         setResult(RESULT_OK, resultSignin);
         finish();
         break;
@@ -51,6 +63,12 @@ public class LoginPage extends ActionBarActivity implements View.OnClickListener
         Toast.makeText(getApplicationContext(), "singer", Toast.LENGTH_SHORT).show();
         Intent resultSinger = new Intent();
         resultSinger.putExtra("user", 1);
+        if(!editUserId.getText().toString().equalsIgnoreCase("")) {
+          resultSinger.putExtra("user_id", editUserId.getText().toString());
+        } else {
+          Toast.makeText(getApplicationContext(), "id를 입력해주세요.", Toast.LENGTH_SHORT).show();
+          break;
+        }
         setResult(RESULT_OK, resultSinger);
         finish();
         break;
