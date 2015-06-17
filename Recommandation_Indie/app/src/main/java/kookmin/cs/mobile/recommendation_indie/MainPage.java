@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -49,7 +50,6 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
 
     db = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
 
-    //db.execSQL("drop table if exists " + TABLE_NAME);
     try {
       db.execSQL("create table " + TABLE_NAME + "("
                  + " _id integer PRIMARY KEY autoincrement, "
@@ -68,6 +68,27 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       c1.moveToPrevious();
       RecommendationMusicPage.prevTitle = c1.getString(0);
       RecommendationMusicPage.prevArtist = c1.getString(1);
+    }
+
+    String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
+
+    String[] projection = {
+        MediaStore.Audio.Media.TITLE,
+        MediaStore.Audio.Media.ARTIST,
+        MediaStore.Audio.Media.DATA
+    };
+
+    Cursor cursor = managedQuery(
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+        projection,
+        selection,
+        null,
+        null);
+
+    if(cursor.getCount() != 0) {
+      cursor.moveToNext();
+      RecommendationMusicPage.prevTitle = cursor.getString(0);
+      RecommendationMusicPage.prevArtist = cursor.getString(1);
     }
     Log.i("mytag", "title : " + RecommendationMusicPage.prevTitle + "  artist : " + RecommendationMusicPage.prevArtist);
     c1.close();
@@ -147,6 +168,17 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       startActivity(new Intent(this, RegisterMusicPage.class));
     } else if (v.getId() == R.id.btn_music_finder) {
       startActivity(new Intent(this, MusicFinder.class));
+    } else if (v.getId() == R.id.btn_configure) {
+      db.execSQL("drop table if exists " + TABLE_NAME);
+
+      db.execSQL("create table " + TABLE_NAME + "("
+                 + " _id integer PRIMARY KEY autoincrement, "
+                 + " title text, "
+                 + " artist text, "
+                 + " url text, "
+                 + " track_id text);");
+
+      Toast.makeText(this, "db가 초기화 되었습니다.", Toast.LENGTH_SHORT).show();
     }
   }
 }
