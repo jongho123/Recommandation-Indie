@@ -12,18 +12,11 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-
 /**
  * Created by sloth on 2015-06-12.
  */
 public class LatestListTab extends Fragment implements AdapterView.OnItemClickListener,
                                                        AdapterView.OnItemLongClickListener {
-
-  private URL url;
-  private HttpURLConnection urlConnection;
-  private static String boundary = "ABAB***ABAB";
   SimpleCursorAdapter adapter;
   Cursor cursor;
 

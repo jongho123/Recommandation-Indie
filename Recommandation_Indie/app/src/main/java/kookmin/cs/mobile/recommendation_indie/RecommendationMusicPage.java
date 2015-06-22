@@ -63,6 +63,9 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
 
   private Handler handler;
 
+  private String URL;
+  private String trackId;
+
   private URL url;
   private HttpURLConnection urlConnection;
   private static String boundary = "ABAB***ABAB";
@@ -117,7 +120,10 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
                       .getString("artist"));
               btnLike.setText("" + recommendedMusic.getInt("like"));
               btnUnlike.setText("" + recommendedMusic.getInt("unlike"));
-              thumbImg.setImageBitmap(thumbnail);
+
+              if(!recommendedMusic.getString("url").equalsIgnoreCase("undefined")) {
+                thumbImg.setImageBitmap(thumbnail);
+              }
 
               prevTitle = recommendedMusic.getString("title");
               prevArtist = recommendedMusic.getString("artist");
@@ -150,9 +156,167 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
               e.printStackTrace();
             }
             break;
+          case 3:
+            Toast.makeText(getApplicationContext(), "음악 정보가 없습니다", Toast.LENGTH_SHORT).show();
+            break;
+
+          case 10:
+            if (mediaplayer != null) {
+              if (mediaplayer.isPlaying()) {
+                mediaplayer.stop();
+                mediaplayer.reset();
+                mediaplayer.release();
+              }
+            }
+
+            icon2playing();
+            serverConnect = true;
+            new Thread(new Runnable() {
+              @Override
+              public void run() {
+                try {
+                  url = new URL("http://52.68.82.234:19918/musicinfo/" + URL + "/" + trackId + "/" + MainPage.USER_ID);
+                  urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ????
+
+                  urlConnection.setDoInput(true);
+                  urlConnection.setUseCaches(false);
+
+                  urlConnection.setRequestMethod("GET");
+                  InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+
+                  int data;
+                  String res = "";
+                  while ((data = in.read()) != -1) {
+                    res += (char) data;
+                  }
+                  in.close();
+
+                  Charset charset = Charset.forName("ISO-8859-1");
+                  ByteBuffer buff = charset.encode(res);
+
+                  charset = Charset.forName("UTF-8");
+                  recommendedMusic = new JSONObject(charset.decode(buff).toString());
+                  Log.i("mytag", recommendedMusic.toString());
+
+                  if(!recommendedMusic.getString("url").equalsIgnoreCase("undefined")) {
+                    new Thread(new Runnable() {
+                      @Override
+                      public void run() {
+                        URL url;
+                        HttpURLConnection urlConnection;
+                        try {
+                          url =
+                              new URL(
+                                  "http://img.youtube.com/vi/" + recommendedMusic.getString("url")
+                                  + "/default.jpg");
+                          urlConnection = (HttpURLConnection) url.openConnection();
+
+                          urlConnection.setDoInput(true);
+                          urlConnection.setUseCaches(false);
+
+                          InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                          thumbnail = BitmapFactory.decodeStream(in);
+                          in.close();
+                          handler.sendEmptyMessage(0);
+                        } catch (Exception e) {
+                          e.printStackTrace();
+                        }
+                      }
+                    }).start();
+                  } else {
+                    handler.sendEmptyMessage(0);
+                  }
+                } catch (Exception e) {
+                  e.printStackTrace();
+                } finally {
+                  urlConnection.disconnect();
+                }
+              }
+            }).start();
+            break;
         }
       }
     };
+
+    final Intent args = getIntent();
+    Log.i("mytag2", args.toString());
+    if(args.getStringExtra("url") != null && args.getStringExtra("track_id") != null) {
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          Log.e("mytag", "come in send ");
+
+          try {
+            url = new URL("http://52.68.82.234:19918/urlanalysis");
+            urlConnection = (HttpURLConnection) url.openConnection();
+
+            urlConnection.setDoInput(true);
+            urlConnection.setDoOutput(true);
+            urlConnection.setUseCaches(false);
+
+            urlConnection.setRequestMethod("POST");
+            urlConnection
+                .setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+
+            DataOutputStream out = new DataOutputStream(urlConnection.getOutputStream());
+
+            String title = new String(args.getStringExtra("title").getBytes(), "ISO-8859-1");
+            String artist = new String(args.getStringExtra("artist").getBytes(), "ISO-8859-1");
+            String track_id = new String(args.getStringExtra("track_id").getBytes(), "ISO-8859-1");
+            String video_id = new String(args.getStringExtra("url").getBytes(), "ISO-8859-1");
+            String user_id = new String(MainPage.USER_ID.getBytes(), "ISO-8859-1");
+
+            out.writeBytes("--" + boundary + "\r\n");
+            out.writeBytes(
+                "Content-Disposition: form-data;" + "name=\"playinfo\";" + "\r\n");
+            out.writeBytes("\r\n");
+            out.writeBytes(
+                "{\"title\":\"" + title + "\"," + "\"artist\":\"" + artist + "\","
+                + "\"trackId\":\"" + track_id + "\"," + "\"videoId\":\"" + video_id + "\"}" + "\r\n");
+            out.flush();
+
+            out.writeBytes("--" + boundary + "\r\n");
+            out.writeBytes(
+                "Content-Disposition: form-data;" + "name=\"userinfo\";" + "\r\n");
+            out.writeBytes("\r\n");
+            out.writeBytes("{\"user_id\":\"" + user_id + "\"," + "\"request\":\"urlanalysis\"}" + "\r\n");
+            out.flush();
+
+            out.writeBytes("--" + boundary + "--\r\n");
+
+            out.flush();
+            out.close();
+
+            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+
+            int data;
+            String result = "";
+            while ((data = in.read()) != -1) {
+              result += (char) data;
+            }
+            in.close();
+
+          } catch (Exception e) {
+            e.printStackTrace();
+          } finally {
+            urlConnection.disconnect();
+
+            URL = args.getStringExtra("url");
+            trackId = args.getStringExtra("track_id");
+            handler.sendEmptyMessage(10);
+          }
+        }
+      }).start();
+
+    } else if(args.getStringExtra("title") != null && args.getStringExtra("artist") != null) {
+      prevTitle = args.getStringExtra("title");
+      prevArtist = args.getStringExtra("artist");
+
+      if (!serverConnect) {
+        icon2playing();
+        playMusic();
+      }
+    }
   }
 
   @Override
@@ -267,7 +431,7 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
       public void run() {
         try {
           url = new URL("http://52.68.82.234:19918/recommendation");
-          urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ????
+          urlConnection = (HttpURLConnection) url.openConnection();
 
           urlConnection.setDoInput(true);
           urlConnection.setDoOutput(true);
@@ -316,33 +480,42 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
           ByteBuffer buff = charset.encode(res);
 
           charset = Charset.forName("UTF-8");
-          recommendedMusic = new JSONObject(charset.decode(buff).toString());
+
+          res = charset.decode(buff).toString();
+          if(res.equalsIgnoreCase("no track")) {
+            handler.sendEmptyMessage(3);
+            return ;
+          }
+          recommendedMusic = new JSONObject(res);
           Log.i("mytag", recommendedMusic.toString());
 
-          new Thread(new Runnable() {
-            @Override
-            public void run() {
-              URL url;
-              HttpURLConnection urlConnection;
-              try {
-                url =
-                    new URL("http://img.youtube.com/vi/" + recommendedMusic.getString("url")
-                            + "/default.jpg");
-                urlConnection = (HttpURLConnection) url.openConnection();
+          if(!recommendedMusic.getString("url").equalsIgnoreCase("undefined")) {
+            new Thread(new Runnable() {
+              @Override
+              public void run() {
+                URL url;
+                HttpURLConnection urlConnection;
+                try {
+                  url =
+                      new URL("http://img.youtube.com/vi/" + recommendedMusic.getString("url")
+                              + "/default.jpg");
+                  urlConnection = (HttpURLConnection) url.openConnection();
 
-                urlConnection.setDoInput(true);
-                urlConnection.setUseCaches(false);
+                  urlConnection.setDoInput(true);
+                  urlConnection.setUseCaches(false);
 
-                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                thumbnail = BitmapFactory.decodeStream(in);
-                in.close();
-                handler.sendEmptyMessage(0);
-              } catch (Exception e) {
-                e.printStackTrace();
+                  InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                  thumbnail = BitmapFactory.decodeStream(in);
+                  in.close();
+                  handler.sendEmptyMessage(0);
+                } catch (Exception e) {
+                  e.printStackTrace();
+                }
               }
-            }
-          }).start();
-
+            }).start();
+          } else {
+            handler.sendEmptyMessage(0);
+          }
         } catch (Exception e) {
           e.printStackTrace();
         } finally {
@@ -457,79 +630,10 @@ public class RecommendationMusicPage extends ActionBarActivity implements View.O
         playMusic();
       }
 
-      Toast.makeText(getApplicationContext(), "선택하여 재생", Toast.LENGTH_SHORT).show();
     } else if (requestCode == REQUEST_CODE_RECOM && resultCode == 2000) {
-      if (mediaplayer != null) {
-        if (mediaplayer.isPlaying()) {
-          mediaplayer.stop();
-          mediaplayer.reset();
-          mediaplayer.release();
-        }
-      }
-
-      final String URL = Data.getStringExtra("url");
-      final String Vidos = Data.getStringExtra("track_id");
-
-      icon2playing();
-      serverConnect = true;
-      new Thread(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            url = new URL("http://52.68.82.234:19918/musicinfo/" + URL + "/" + Vidos + "/" + MainPage.USER_ID);
-            urlConnection = (HttpURLConnection) url.openConnection(); // HTTP ????
-
-            urlConnection.setDoInput(true);
-            urlConnection.setUseCaches(false);
-
-            urlConnection.setRequestMethod("GET");
-            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-
-            int data;
-            String res = "";
-            while ((data = in.read()) != -1) {
-              res += (char) data;
-            }
-            in.close();
-
-            Charset charset = Charset.forName("ISO-8859-1");
-            ByteBuffer buff = charset.encode(res);
-
-            charset = Charset.forName("UTF-8");
-            recommendedMusic = new JSONObject(charset.decode(buff).toString());
-            Log.i("mytag", recommendedMusic.toString());
-
-            new Thread(new Runnable() {
-              @Override
-              public void run() {
-                URL url;
-                HttpURLConnection urlConnection;
-                try {
-                  url =
-                      new URL("http://img.youtube.com/vi/" + recommendedMusic.getString("url")
-                              + "/default.jpg");
-                  urlConnection = (HttpURLConnection) url.openConnection();
-
-                  urlConnection.setDoInput(true);
-                  urlConnection.setUseCaches(false);
-
-                  InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                  thumbnail = BitmapFactory.decodeStream(in);
-                  in.close();
-                  handler.sendEmptyMessage(0);
-                } catch (Exception e) {
-                  e.printStackTrace();
-                }
-              }
-            }).start();
-
-          } catch (Exception e) {
-            e.printStackTrace();
-          } finally {
-            urlConnection.disconnect();
-          }
-        }
-      }).start();
+      URL = Data.getStringExtra("url");
+      trackId = Data.getStringExtra("track_id");
+      handler.sendEmptyMessage(10);
     }
   }
 }

@@ -124,7 +124,7 @@ public class MyListTab extends Fragment implements AdapterView.OnItemClickListen
           out.writeBytes(
               "Content-Disposition: form-data;" + "name=\"userinfo\";" + "\r\n");
           out.writeBytes("\r\n");
-          out.writeBytes("{\"user_id\":\"" + user_id + "\"," + "\"request\":\"play\"}" + "\r\n");
+          out.writeBytes("{\"user_id\":\"" + user_id + "\"," + "\"request\":\"analysis\"}" + "\r\n");
           out.flush();
 
           out.writeBytes("--" + boundary + "\r\n");

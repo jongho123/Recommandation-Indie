@@ -11,7 +11,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -28,7 +27,7 @@ import android.widget.Toast;
 public class MainPage extends ActionBarActivity implements View.OnClickListener {
 
   private static final int REQUEST_CODE_LOGIN = 1001;
-  private boolean singer = false;
+  private static boolean singer = false;
   public static String USER_ID = "guest";
 
   public static String DATABASE_NAME = "recommendationIndie";
@@ -38,8 +37,6 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    supportRequestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
-
     setContentView(R.layout.activity_main);
 
     Button btnFind = (Button) findViewById(R.id.btn_music_finder);
@@ -61,37 +58,39 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       Log.e("mytag", "Exception in CREATE_SQL", ex);
     }
     String[] columns = {"title", "artist", "url", "track_id"};
-    Cursor c1 = MainPage.db.query(MainPage.TABLE_NAME, columns, null, null, null, null, "_id", "0, 10");
+    Cursor
+        c1 =
+        MainPage.db.query(MainPage.TABLE_NAME, columns, null, null, null, null, "_id", "0, 10");
 
-    if(c1.getCount() != 0) {
+    if (c1.getCount() != 0) {
       c1.moveToLast();
-      c1.moveToPrevious();
       RecommendationMusicPage.prevTitle = c1.getString(0);
       RecommendationMusicPage.prevArtist = c1.getString(1);
+    } else {
+      String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
+
+      String[] projection = {
+          MediaStore.Audio.Media.TITLE,
+          MediaStore.Audio.Media.ARTIST,
+          MediaStore.Audio.Media.DATA
+      };
+
+      Cursor cursor = managedQuery(
+          MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          selection,
+          null,
+          null);
+
+      if (cursor.getCount() != 0) {
+        cursor.moveToNext();
+        RecommendationMusicPage.prevTitle = cursor.getString(0);
+        RecommendationMusicPage.prevArtist = cursor.getString(1);
+      }
+      Log.i("mytag", "title : " + RecommendationMusicPage.prevTitle + "  artist : "
+                     + RecommendationMusicPage.prevArtist);
+      c1.close();
     }
-
-    String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
-
-    String[] projection = {
-        MediaStore.Audio.Media.TITLE,
-        MediaStore.Audio.Media.ARTIST,
-        MediaStore.Audio.Media.DATA
-    };
-
-    Cursor cursor = managedQuery(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        selection,
-        null,
-        null);
-
-    if(cursor.getCount() != 0) {
-      cursor.moveToNext();
-      RecommendationMusicPage.prevTitle = cursor.getString(0);
-      RecommendationMusicPage.prevArtist = cursor.getString(1);
-    }
-    Log.i("mytag", "title : " + RecommendationMusicPage.prevTitle + "  artist : " + RecommendationMusicPage.prevArtist);
-    c1.close();
   }
 
   protected void onStart() {
@@ -169,16 +168,9 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     } else if (v.getId() == R.id.btn_music_finder) {
       startActivity(new Intent(this, MusicFinder.class));
     } else if (v.getId() == R.id.btn_configure) {
-      db.execSQL("drop table if exists " + TABLE_NAME);
-
-      db.execSQL("create table " + TABLE_NAME + "("
-                 + " _id integer PRIMARY KEY autoincrement, "
-                 + " title text, "
-                 + " artist text, "
-                 + " url text, "
-                 + " track_id text);");
-
-      Toast.makeText(this, "db가 초기화 되었습니다.", Toast.LENGTH_SHORT).show();
+      Intent intent = new Intent(this, ConfigurePage.class);
+      intent.putExtra("singer", singer);
+      startActivity(intent);
     }
   }
 }
