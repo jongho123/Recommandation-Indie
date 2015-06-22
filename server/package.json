@@ -11,7 +11,7 @@
     "aws-sdk":"*",
     "file-stream-rotator":"*",
     "mongoose":"*",
-    "iconv":"*"
+    "async":"*"
   },
   "author": "Jongho Lim",
   "license": "ISC"

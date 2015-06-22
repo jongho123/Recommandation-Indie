@@ -46,14 +46,18 @@ app.get('/', function(req, res) {
 app.get('/like/:trackId/:userId', controller.like); 
 app.get('/unlike/:trackId/:userId', controller.unlike);
 
-app.get('/music', controller.list);
 app.get('/streaming/:videoId/:trackId', controller.streaming);
 app.get('/musicinfo/:videoId/:trackId/:userId', controller.musicinfo);
+app.get('/createuser/:userId', controller.createuser);
+
+app.post('/find', controller.find);
 app.post('/recommendation', controller.recommendation);
 
 // register music test... 
 app.post('/register', controller.register);
 app.post('/analysis', controller.analysis);
+app.post('/urlanalysis', controller.urlanalysis);
+app.post('/createdlist', controller.createdlist);
 
 app.listen(port, function(err) {
   if(err) return console.log(err);

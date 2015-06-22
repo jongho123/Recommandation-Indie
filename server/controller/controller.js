@@ -12,6 +12,7 @@ var options = {
     'Content-Length':0
   }
 };
+
 var http = require('http');
 var querystring = require('querystring');
 
@@ -25,6 +26,101 @@ var cp = require('child_process');
 
 var controller = {};
 
+controller.createuser = function(req, res) {
+  console.log('start createuser');
+  var userId = req.params.userId;
+ 
+  var inputObj = new Object();
+
+  inputObj.user_id = userId;
+
+  var input = querystring.stringify({ 'data' : JSON.stringify(inputObj) }); 
+
+  options.path = '/soundnerd/user/register',
+  options.headers = {
+    'Content-Type':'application/x-www-form-urlencoded',
+    'Content-Length':input.length
+  }
+  var createReq = http.request(options, function(createRes){
+    var body = '';
+    createRes.on('data', function (data) {
+      body += data;
+    }). 
+    on('end', function () {
+      res.sendStatus(200);
+      console.log('created user complete');
+    });
+  });
+
+  createReq.end(input);
+}
+controller.createdlist = function(req, res) {
+  console.log('start createlist');
+  var createdinfo = JSON.parse(req.body.createdinfo);
+  console.log(createdinfo);
+
+  async.waterfall([
+    function (callback) {
+
+      var inputObj = new Object();
+
+      inputObj.req_user_id = 'master';
+      inputObj.lookup_user_id = createdinfo.user_id;
+      inputObj.start = Number(createdinfo.start);
+      inputObj.count = 10;
+
+      var input = querystring.stringify({ 'data' : JSON.stringify(inputObj) }); 
+
+      options.path = '/soundnerd/user/nonshared_history',
+      options.headers = {
+        'Content-Type':'application/x-www-form-urlencoded',
+        'Content-Length':input.length
+      }
+
+
+      var searchReq = http.request(options, function(searchRes){
+        var body = '';
+        searchRes.on('data', function (data) {
+          body += data;
+        }). 
+        on('end', function () {
+          callback(null, body);
+        });
+      });
+
+      searchReq.end(input);
+    },
+    function (body, callback) {
+      var tracks = JSON.parse(body).tracks;
+      var additem = JSON.parse(body).additional_items;
+
+      var createdList = [];
+      var i = 0;
+      async.whilst(
+        function () {
+          return i < tracks.length;
+        },
+        function (callback) {
+          MusicInfo.find({ track_id: tracks[i].track_id }, function (err, track) {
+            if (err) console.log(err);
+            else createdList.push({ title: track[0].title, count: track[0].count, track_id: track[0].track_id });
+            i++;
+            callback(null);
+          });
+        },
+        function (err) { 
+          createdList.push(additem);
+          res.send(createdList);
+          console.log('createdlist complete');
+        }
+      );
+    },
+  ],
+  function (err, result) {
+    if (err) console.log(err);
+    else console.log(result);
+  });
+}
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
  * @version 0.0.2
@@ -127,6 +223,7 @@ controller.unlike = function(req, res) {
  * @date 2015-06-17
  */
 controller.musicinfo = function(req, res) {
+  console.log('start musicinfo');
   var trackId = req.params.trackId;
   var videoId = req.params.videoId; // youtube videos id
   var userId = req.params.userId;
@@ -137,7 +234,7 @@ controller.musicinfo = function(req, res) {
     function (callback) {
       MusicInfo.find({ track_id: trackId }, function(err, track) {
         if(err) return callback(err);
-        else if(track.length == 0) return callback(new Error('No track with track_id ' + trackId + 'found.'));
+        else if(track.length == 0) return callback(new Error('No track with track_id ' + trackId + ' found.'));
         callback(null, track[0]);
       });
     },
@@ -171,8 +268,10 @@ controller.musicinfo = function(req, res) {
  * @Todo 스트리밍 하고 음악의 count 업데이트 시키는 메소드 추가해야함, 가수가 등록한 음악 스트리밍할 수 있도록 해야함.
  */
 controller.streaming = function(req, res) {
+  console.log('start streaming');
   var trackId = req.params.trackId;
   var filename = './music/' + req.params.trackId;
+  
 
   async.waterfall([
     // AWS S3에 음아깅 존재하는지 학인함. 존재하면 바로 client에 스트리밍 해주고 끝남.
@@ -186,8 +285,13 @@ controller.streaming = function(req, res) {
           var musicstream = s3.getObject().createReadStream();
           musicstream.pipe(res);
           musicstream.on('end', function(){
-            res.end();
-            return callback(new Error("music exist, S3 to Server musicstream end"));
+            MusicInfo.find({track_id: trackId}, function (err, track) {
+              if (err) return callback(err);
+              MusicInfo.update({track_id: trackId}, {count: ++track[0].count}, function(err) {
+                if(err) return callback(err);
+                return callback(new Error("music exist, S3 to Server musicstream end"));
+              });
+            });
           });
         }
       });
@@ -278,6 +382,7 @@ controller.streaming = function(req, res) {
  * @date 2015-06-17
  */
 controller.analysis = function(req, res) {
+  console.log('start analysis');
   var playinfo = JSON.parse(req.body.playinfo);// 분석될 음악의 title과 artist 정보
   var filename = req.files.uploaded.name.split('.')[0]; // 업로드된 파일의 원래 이름
   var featureFile = './music/' + filename + '.txt';
@@ -340,17 +445,104 @@ controller.analysis = function(req, res) {
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
  * @version 0.0.2
+ * @brief url 정보로 youtube에서 음악을 다운로드 하여 feature를 분석해 DB에 저장함.
+ * @details 음악을 추천 받으려면 먼저 DB에 feature가 등록되어 있어야 되는데 feature를 만드는 함수이다. youtube로 부터 음악을 다운로드하여 feature를 extract하고 title, artist, feature 의 정보를 DB에 등록한다.
+ * @date 2015-06-17
+ */
+controller.urlanalysis = function(req, res) {
+  console.log('start urlanalysis');
+  var playinfo = JSON.parse(req.body.playinfo);// 분석될 음악의 title과 artist 정보
+  var filename = './music/' + playinfo.trackId;
+
+  async.waterfall([
+    function (callback) {
+      var params = { params: { Bucket: 'jhmusic', Key: playinfo.trackId + '.mp3'} };
+      s3 = new AWS.S3(params);
+
+      s3.headObject({}, function(notExist, data) {
+        if(notExist) callback(null); 
+        else return callback(new Error("music exist"));
+      });
+    },
+    function (callback) {
+      var youtubedl = cp.fork('./youtube-dl.js');  
+      youtubedl.on('exit', function(code, signal) {
+        callback(null);  
+      });
+      youtubedl.send({ url: "https://www.youtube.com/watch?v=" + playinfo.videoId, filename: filename + ".m4a" });
+    },
+    function (callback) {
+      var putStorage = fs.createReadStream(filename + '.mp3');
+      s3.upload({Body: putStorage}).on('httpUploadProgress', function(evt) {
+      }).
+      send(function(err, data) {
+        if(err) return callback(err); 
+        callback(null);
+      });
+    },
+    function (callback) {
+      console.log('in extract');
+      var extract = cp.fork('./extract'); 
+      extract.on('exit', function(code, signal) {
+        callback(null);
+      });
+      extract.send({ input: filename + ".mp3", output: filename + ".txt" });
+    },
+    function (callback) {
+      var fstream = fs.createReadStream(filename + '.txt');
+      var featureData = "";
+      fstream.on('data', function(data) {
+        featureData += data;
+      }).
+      on('end', function() {
+        callback(null, featureData);
+      });
+    },
+    function (featureData, callback) {
+      Track.create({ title: playinfo.title, artist: playinfo.artist, feature: featureData }, function (err) {
+        if (err) return callback(err);
+        fs.unlink(filename + '.mp3');
+        fs.unlink(filename + '.txt');
+        callback(null);
+      });
+    },
+    function (callback) {
+      MusicInfo.find({ track_id: playinfo.track_id }, function (err, track) {
+        if (err) return callback(err);
+        else if (track.length > 0) return callback(new Error("exist Musicinfo"));
+        MusicInfo.create({ track_id: playinfo.trackId, artist: playinfo.artist, title: playinfo.title, like: 0, unlike: 0, count: 0 }, function (err) {
+          if (err) return callback(err);
+          callback(null, 'url analysis complete');
+        }); 
+      });
+    }
+  ],
+  // 실행 결과 콘솔에 출력. 
+  function (err, result) {
+    res.sendStatus(200);
+    if (err) console.log(err);
+    else console.log(result);
+  });
+}
+
+/**
+/**
+ * @author Jongho Lim, sloth@kookmin.ac.kr
+ * @version 0.0.2
  * @brief singer가 자신의 음악을 등록한다.
  * @details singer가 자신의 음악을 등록 요청하면 DB에 등록하려는 음악과 같은 음악이 있는지 확인하고 없으면 등록한다. 음악 파일은 S3에 저장되고 관련딘 데이터들은 DB에 저장된다.
  * @date 2015-06-17
  */
 controller.register = function(req, res) {
+  console.log('start register');
   var userinfo = JSON.parse(req.body.userinfo); // 요청하는 user의 정보
   var musicinfo = JSON.parse(req.body.musicinfo); // 등록하는 음악의 정보
   var filename = './music/' // file의 이름
   var tempMusicFile = req.files.uploaded.path; // 업로드된 음악 파일
   var track_id = '';
 
+  console.log(userinfo);
+  console.log(musicinfo);
   async.waterfall([
     // 등록하는 음악의 track_id를 생성한다. 1~9까지의 난수를 발생시켜 20자리로 구성한다.
     function (callback) {
@@ -358,10 +550,12 @@ controller.register = function(req, res) {
       while(i--) { track_id += Math.floor(Math.random() * 10); }
       filename += track_id;
       console.log('created id : ' +  track_id);
+      callback(null);
     },
     // 업로드된 음악파일의 feature를 추출한다.
     // 추출된 데이터는 ./music 폴더에 새로 만든 track_id로 .txt 파일로 만들어진다.
     function (callback) {
+      console.log('in extract');
       var extract = cp.fork('./extract');
       extract.on('exit', function (code, signal) {
         callback(null);
@@ -370,6 +564,7 @@ controller.register = function(req, res) {
     },
     // 추출된 feature data를 가져온다.
     function (callback) {
+      console.log('read feature');
       var featureData = '';
       var fstream = fs.createReadStream(filename + '.txt');
       fstream.on('data', function (data) {
@@ -383,23 +578,23 @@ controller.register = function(req, res) {
     // tracks 콜렉션에 같은 음악이 없는지 확인하고 없으면 musicinfo data와 추출된 feature 데이터를 DB에 저장한다. 
     // 트랙을 찾거나 생성하는데 에러가 나거나 이미 같은 track이 존재하면 에러를 리턴한다.
     function (featureData, callback) {
+      console.log('create track');
       Track.find(musicinfo, function (err, track) {
         if (err) return callback(err);
         else if (track.length > 0) return callback(new Error('Exist track'));
         Track.create({ title: musicinfo.title, artist: musicinfo.artist, feature: featureData }, function (err) {
           if (err) return callback(err);
           //callback(null, featureData);
-          callback(null);
+          callback(null, featureData);
         });
       });
     },
-    /*
     // musicinfo 와 feature data를 보나셀 서버 DB에 저장한다. 
     // 기존 보나셀 DB의 음원과 새로 생성한 음원의 구분을 위해 새로 만드는 음원의 앨범명은 created로 한다.
     function (featureData, callback) {
       var inputObj = new Object();
 
-      inputObj.user_id = 'singer';
+      inputObj.user_id = userinfo.user_id;
       inputObj.artist = userinfo.user_id;
       inputObj.title = musicinfo.title;
       inputObj.album = 'created';
@@ -426,10 +621,41 @@ controller.register = function(req, res) {
 
       playReq.end(input);
     },
-    */
+    function (callback) {
+      var inputObj = new Object();
+
+      inputObj.req_user_id = 'master';
+      inputObj.lookup_user_id = userinfo.user_id;
+      inputObj.start = 0;
+      inputObj.count = 1;
+ 
+      var input = querystring.stringify({ 'data' : JSON.stringify(inputObj) }); 
+
+      options.path = '/soundnerd/user/nonshared_history',
+      options.headers = {
+        'Content-Type':'application/x-www-form-urlencoded',
+        'Content-Length':input.length
+      }
+
+      var createdReq = http.request(options, function(createdRes) {
+        var body = "";
+        createdRes.on('data', function(chunk){
+          body += chunk;
+        }).
+        on('end', function(){
+          console.log(body);
+
+          track_id = JSON.parse(body).tracks[0].track_id;
+          callback(null);
+        });
+      });
+
+      createdReq.end(input);
+    },
     // musicinfos 콜렉션에 음악의 정보가 있는지 확인한다.
     // 확인시에 에러가 나거나 음악의 정보가 있으면 에러를 리턴한다. 
     function (callback) {
+      console.log('find musicinfo');
       MusicInfo.find(musicinfo, function (err, track) {
         if (err) return callback(err);
         else if (track.length > 0) return callback(new Error('Exist Music info'));
@@ -439,6 +665,7 @@ controller.register = function(req, res) {
     // musicinfos 콜렉션에 음악의 정보를 만든다. 
     // 만들때 에러가 나면 에러를  리턴한다. 
     function (callback) { 
+      console.log('create musicinfo');
       MusicInfo.create({ track_id: track_id, title: musicinfo.title, artist: musicinfo.artist, 
                          like: 0, unlike: 0, count: 0}, function(err) {
         if (err) return callback(err);
@@ -448,6 +675,7 @@ controller.register = function(req, res) {
     // AWS S3에 음원이 있는지 확인한다. 
     // 음원이 존재하면 에러를 리턴한다. 
     function (callback) {
+      console.log('find S3');
       var params = { params: { Bucket: 'jhmusic', Key: track_id + '.mp3' } };
       s3 = new AWS.S3(params);
       
@@ -460,6 +688,7 @@ controller.register = function(req, res) {
     // 모두 업로드되면 서버에 업로드 되었던 음악파일은 삭제한다.
     // 음원이 존재하면 에러를 리턴한다. 
     function (callback) {
+      console.log('upload S3');
       var putStorage = fs.createReadStream(tempMusicFile);
  
       s3.upload({Body: putStorage}).on('httpUploadProgress', function(evt) {
@@ -476,6 +705,7 @@ controller.register = function(req, res) {
     },
     // 어느 가수가 어떤 track_id의 음악을 등록했는지 로그를 남긴다. 
     function (callback) {
+      console.log('log');
       Log.create({ user_id: userinfo.user_id, request: userinfo.request, log: track_id }, function(err) {
         if(err) return callback(err);
         callback(null, 'register complete');
@@ -497,8 +727,11 @@ controller.register = function(req, res) {
  * @date 2015-06-17
  */
 controller.recommendation = function(req, res) {
+  console.log('start recommendation');
   var base = JSON.parse(req.body.base); // 추천의 기준이 되는 음악의 정보
   var info = JSON.parse(req.body.info); // user의 정보
+
+  console.log(base);
 
   async.waterfall([
     // tracks 콜렉션에 base 음악의 feature 데이터가 있는지 확인한다.
@@ -548,6 +781,44 @@ controller.recommendation = function(req, res) {
     // 추천 받은 음악들 중에 score가 90을 초과하는 음악 중 랜덤으로 하나를 선택한다. 만약 score가 90을 초과하는 곡이 없다면 가장 유사한 곡을 선택한다.
     // 선택된 곡의 정보를 가지고 보나셀에 search request를 하여 곡의 url 정보를 받아온다.
     // search로 검색되지 않으면 에러를 리턴한다.
+    function (tracks, callback) {
+      var i = 0;
+      var createdIndex = [];
+
+      while(i < tracks.length) {
+        if(tracks[i].album == 'created') createdIndex.push(i);
+        ++i;
+      }
+      if (createdIndex.length != 0) {
+        i = Math.floor(Math.random() * createdIndex.length);
+        i = createdIndex[i]; 
+
+        MusicInfo.find({ track_id: tracks[i].track_id }, function (err, track) {
+          if (err) return callback(err);
+          else if (track.length > 0) {
+            res.end(JSON.stringify({ track_id: track[0].track_id, url: 'undefined', artist: track[0].artist, title: track[0].title, like: track[0].like, unlike: track[0].unlike}));
+        }
+          /*
+          MusicInfo.create({ track_id: foundTrack.track_id, artist: foundTrack.artist, title: foundTrack.title, like: 0, unlike: 0, count: 0 }, function (err) {
+            if (err) return callback(err);
+            res.end({ track_id: tracks[i].track_id, url: '', artist: tracks[i].artist, title: tracks[i].title, like: 0, unlike: 0 });
+          }); 
+          */
+        });
+
+        console.log('-----------RAND--------------'); 
+        console.log(createdIndex, 'TO', i); 
+        console.log('title :', tracks[i].title, 'artist', tracks[i].artist);
+        console.log('-----------------------------'); 
+        Log.create({ user_id: info.user_id, request: info.request, log: tracks[i].track_id }, function(err) {
+          if (err) return callback(err);
+        });
+
+        callback(new Error('recommended created music'));
+      } else {
+        callback(null, tracks);
+      } 
+    },
     function (tracks, callback) {
       var i = 0;
 
@@ -601,9 +872,9 @@ controller.recommendation = function(req, res) {
       MusicInfo.find({ track_id: foundTrack.track_id }, function (err, track) {
         if (err) return callback(err);
         else if (track.length > 0) {
-          var resMessage = JSON.stringify({ track_id: track[0].track_id, url: vidoeId, artist: track[0].artist, title: track[0].title, like: track[0].like, unlike: track[0].unlike});
+          var resMessage = JSON.stringify({ track_id: track[0].track_id, url: videoId, artist: track[0].artist, title: track[0].title, like: track[0].like, unlike: track[0].unlike});
           res.end(resMessage);
-          return callback(null, foundTrack.track_id));
+          callback(null, foundTrack.track_id);
         }
         MusicInfo.create({ track_id: foundTrack.track_id, artist: foundTrack.artist, title: foundTrack.title, like: 0, unlike: 0, count: 0 }, function (err) {
           if (err) return callback(err);
@@ -628,83 +899,67 @@ controller.recommendation = function(req, res) {
   });
 };
 
-controller.list = function(req, res) {
+controller.find = function(req, res) {
+  console.log('start find');
+  var findinfo = JSON.parse(req.body.findinfo);
+  var userinfo = JSON.parse(req.body.userinfo);
 
-  var info;
-  if(req.body.info) {
-    info = JSON.parse(req.body.info);
-  } else {
-    var infoData = JSON.stringify({ user_id: "guest", request: "list" });
-    info = JSON.parse(infoData);
-  } 
+  console.log(findinfo);
+  console.log(userinfo);
 
-  if("user_id" in info && info.user_id !== '') {
-    var models = JSON.stringify({ user_id: info.user_id, request: info.request });
-    Log.create(JSON.parse(models), function(err) {
-      if(err) return console.log(err);
-    })
-  }
+  async.waterfall([
+    function (callback) {
+      var inputObj = new Object();
 
-  var inputObj = new Object();
+      inputObj.title = findinfo.title;
+      inputObj.artist = findinfo.artist;
+      inputObj.start = Number(findinfo.start);
+      inputObj.count = 10;
+ 
+      var input = querystring.stringify({ 'data' : JSON.stringify(inputObj) }); 
 
-  inputObj.req_user_id = 'master';
-  inputObj.lookup_user_id = 'test';
-  inputObj.start = 0;
-  inputObj.count = 10;
-
-  var input = querystring.stringify({ 'data' : JSON.stringify(inputObj) }); 
-
-
-  console.log(input);
-
-  options.path = '/soundnerd/user/nonshared_history',
-  options.headers = {
-    'Content-Type':'application/x-www-form-urlencoded',
-    'Content-Length':input.length
-  }
-  
-  var bonaReq = http.request(options, function(bonaRes) {
-    var body = '';
-
-    bonaRes.on('data', function(chunk){
-      body += chunk;
-    })
-    .on('end', function(){
-      var tid = JSON.parse(body).tracks[1].track_id;
-
-      input = querystring.stringify({ 'data' : JSON.stringify({track_id : tid, count : 10}) }); 
-
-      options.path = '/soundnerd/music/recommend',
+      options.path = '/soundnerd/music/search',
       options.headers = {
         'Content-Type':'application/x-www-form-urlencoded',
         'Content-Length':input.length
       }
-
-      var recoReq = http.request(options, function(recoRes) {
-        var list = [];
-        body = "";
-        recoRes.on('data', function(chunk) {
-          body += chunk; 
-        })
-        .on('end', function() {
+      
+      var searchReq = http.request(options, function(searchRes){
+        var body = '';
+        searchRes.on('data', function (data) {
+          body += data;
+        }). 
+        on('end', function () {
           var tracks = JSON.parse(body).tracks;
-          //console.log(tracks);
-
-          for( var i = 0; i < tracks.length; ++i ) {
-            list.push(tracks[i].title);
-          }
-          //console.log(list);
-
-          res.json(list);
+          callback(null, tracks);
         });
       });
 
-      recoReq.end(input);
-    });
-
-  });  
-
-  bonaReq.end(input);
+      searchReq.end(input);
+    },
+    function (tracks, callback) {
+      if (tracks.length == 0) {
+        res.end('no track');
+        callback(null);
+      } else {
+        for (var i = 0; i < tracks.length; i++) {
+          tracks[i].url = tracks[i].url.split('v=')[1];
+        }
+        res.end(JSON.stringify(tracks));
+        callback(null);
+      }
+    },
+    function (callback) {
+      Log.create({ user_id: userinfo.user_id, request: userinfo.user_id, log: findinfo.title + ', ' + findinfo.artist }, function(err) {
+        if (err) return callback(err);
+        callback(null, 'find complete');
+      });
+    }
+  ], 
+  function(err, result){
+    if (err) console.log(err);
+    else console.log(result);
+  });
 };
 
 module.exports = controller;
