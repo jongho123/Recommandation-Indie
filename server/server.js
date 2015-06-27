@@ -7,97 +7,57 @@ var logger = require('morgan'),
     multer = require('multer');
 
 var fs = require('fs');
-var AWS = require('aws-sdk');
-AWS.config.loadFromPath('./config.json');
 
 var myLog = ':remote-addr :remote-user :method :url HTTP/:http-version :status :res[content-length] - :response-time ms ":user-agent"';
+
+var mongoose = require('mongoose');
+require('./models/track'),
+require('./models/musicInfo'),
+require('./models/log');
+
+mongoose.connect('mongodb://localhost/recommendationIndie');
+
+var controller = require('./controller/controller');
+
+var logDirectory = __dirname + '/log';
+var musicDirectory = __dirname + '/music';
+
+var FileStreamRotator = require('file-stream-rotator');
+fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
+fs.existsSync(musicDirectory) || fs.mkdirSync(musicDirectory);
+
+var accessLogStream = FileStreamRotator.getStream({
+  filename: logDirectory + '/access-%DATE%.log',
+  frequency: 'daily',
+  verbose: false
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended : true }));
 app.use(multer());
-app.use(logger(myLog));
+app.use(logger(myLog, {stream: accessLogStream}));
 
-var list = [];
-var S3 = new AWS.S3();
-S3.listObjects({Bucket: 'jhmusic'}, function(err, data) {
-  if (err) console.log(err, err.stack);
-  else {
-    for(var i=0; i<data.Contents.length; ++i) {
-      list.push(data.Contents[i].Key);
-    }
-    console.log(list);
-  }
-});
 app.get('/', function(req, res) {
-  res.end('Hello world');
+  console.log('comin');
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.end('안녕하세요. 추천인디 사이트입니다.');
 });
 
-var swit = true;
-var count = 0;
-app.get('/recommendation', function(req, res) {
+app.get('/like/:trackId/:userId', controller.like); 
+app.get('/unlike/:trackId/:userId', controller.unlike);
 
-  var s3 = new AWS.S3();
+app.get('/streaming/:videoId/:trackId', controller.streaming);
+app.get('/musicinfo/:videoId/:trackId/:userId', controller.musicinfo);
+app.get('/createuser/:userId', controller.createuser);
 
-  if(swit) {
-    var params = {Bucket: 'jhmusic', Key: '안부.mp3'};
-    console.log('play music 안부.mp3');
-  } else {
-    var params = {Bucket: 'jhmusic', Key: '재회.mp3'};
-    console.log('play music 재회.mp3');
-  }
-
-  var recoMusic = s3.getObject(params).createReadStream();
-  var dataLength = 0;
-
-  recoMusic.pipe(res);
-  recoMusic.on('data', function(chunk) {
-    dataLength += chunk.length;
-  }).
-  on('end', function() {
-    console.log('The length was : ' + dataLength);
-    if(++count == 2) {
-      count %= 2;
-      if(swit) swit = false;
-      else swit = true;
-    }
-  });
-});
-
-app.get('/music', function(req, res) {
-    res.json(list);
-});
+app.post('/find', controller.find);
+app.post('/recommendation', controller.recommendation);
 
 // register music test... 
-app.post('/', function(req, res) {
-  var oldPath = req.files.uploaded.path;
-  var keyName = req.files.uploaded.originalname; 
- 
-  console.log('%s / %s', oldPath, keyName);
-
-  var params = { params: { Bucket: 'jhmusic', Key: keyName} };
-  var s3 = new AWS.S3(params);
-
-  s3.headObject({}, function(notExist, data) {
-    if(notExist) { 
-      var putStorage = fs.createReadStream(oldPath);
-
-      s3.upload({Body: putStorage}).
-        on('httpUploadProgress', function(evt) { console.log(evt); }).
-        send(function(err, data) { console.log(err, data) });
-
-      putStorage.on('close', function(){
-        fs.unlink(oldPath, function(err) {
-          if(err) { console.log('unlink error', err); }
-        });
-      });
-    }
-    else {
-      console.log("exist:", data); 
-    }
-  });
-
-  res.sendStatus(200);
-});
+app.post('/register', controller.register);
+app.post('/analysis', controller.analysis);
+app.post('/urlanalysis', controller.urlanalysis);
+app.post('/createdlist', controller.createdlist);
 
 app.listen(port, function(err) {
   if(err) return console.log(err);
