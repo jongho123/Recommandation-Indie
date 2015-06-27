@@ -3,6 +3,7 @@
     package="kookmin.cs.mobile.recommendation_indie" >
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <application
         android:allowBackup="true"
         android:icon="@drawable/app_icon"
@@ -35,6 +36,19 @@
 
         <activity
                 android:name=".MusicFinder"
+                android:label="@string/app_name" >
+        </activity>
+
+        <activity
+                android:name=".ActivityListTab"
+                android:label="@string/app_name" >
+        </activity>
+        <activity
+                android:name=".ConfigurePage"
+                android:label="@string/app_name" >
+        </activity>
+        <activity
+                android:name=".CreatedMusicList"
                 android:label="@string/app_name" >
         </activity>
 

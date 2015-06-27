@@ -1,15 +1,23 @@
 package kookmin.cs.mobile.recommendation_indie;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.widget.ArrayAdapter;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -24,59 +32,166 @@ import java.util.ArrayList;
  * @date 2015-04-24
  * @Todo 클릭하면 노래 실행하도록 해야함. UI 개선
  */
-public class MusicFinder extends ActionBarActivity {
+public class MusicFinder extends ActionBarActivity implements View.OnClickListener,
+                                                              AdapterView.OnItemClickListener,
+                                                              AdapterView.OnItemLongClickListener {
 
   private URL url;
   private HttpURLConnection urlConnection;
-  private ArrayAdapter<String> adapter;
-  private ArrayList<String> musicList = new ArrayList<>();
+  private static String boundary = "ABAB***ABAB";
+
+  private analysisMusicListAdapter adapter;
+  private ArrayList<String> trackId = new ArrayList<>();
+
+  private EditText editFind;
+
+  private int start = 0;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_music_finder);
+    editFind = (EditText) findViewById(R.id.edit_find);
+    Button btnFindServer = (Button) findViewById(R.id.btn_server_find);
+    btnFindServer.setOnClickListener(this);
 
-    adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, musicList);
-
+    adapter = new analysisMusicListAdapter(this);
     ListView list = (ListView) findViewById(R.id.music_list);
     list.setAdapter(adapter);
 
-    Thread work = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          url = new URL("http://52.68.82.234:19918/music");
-          urlConnection = (HttpURLConnection) url.openConnection();
+    list.setOnItemClickListener(this);
+    list.setOnItemLongClickListener(this);
+  }
 
-          urlConnection.setDoInput(true);
-          urlConnection.setUseCaches(false);
+  @Override
+  public void onClick(View view) {
+    if (view.getId() == R.id.btn_server_find) {
+      InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+      imm.hideSoftInputFromWindow(editFind.getWindowToken(), 0);
 
-          InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-          BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            url = new URL("http://52.68.82.234:19918/find");
+            urlConnection = (HttpURLConnection) url.openConnection();
 
-          String res = reader.readLine();
-          Log.i("mytag", res);
-          in.close();
+            urlConnection.setDoInput(true);
+            urlConnection.setDoOutput(true);
+            urlConnection.setUseCaches(false);
 
-          JSONArray jsonArray = new JSONArray(res);
-          for(int i = 0; i < jsonArray.length(); ++i) {
-            musicList.add(jsonArray.get(i).toString());
-          }
-        } catch (Exception e) {
-          e.printStackTrace();
-        } finally {
-          urlConnection.disconnect();
+            urlConnection.setRequestMethod("POST");
+            urlConnection
+                .setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
 
-          runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-              adapter.notifyDataSetChanged();
+            DataOutputStream out = new DataOutputStream(urlConnection.getOutputStream());
+
+            out.writeBytes("--" + boundary + "\r\n");
+            out.writeBytes(
+                "Content-Disposition: form-data;" + "name=\"findinfo\";" + "\r\n");
+            out.writeBytes("\r\n");
+
+            String title;
+            String artist;
+
+            if (editFind.getText().toString().contains(",")) {
+              title =
+                  new String(editFind.getText().toString().split(",")[0].getBytes(), "ISO-8859-1");
+              artist =
+                  new String(editFind.getText().toString().split(",")[1].getBytes(), "ISO-8859-1");
+            } else {
+              title = new String(editFind.getText().toString().getBytes(), "ISO-8859-1");
+              artist = "";
             }
-          });
-        }
-      }
-    });
 
-    work.start();
+            String user_id = new String(MainPage.USER_ID.getBytes(), "ISO-8859-1");
+            out.writeBytes(
+                "{\"title\":\"" + title + "\"," + "\"artist\":\"" + artist + "\","
+                + "\"start\":\"" + start + "\"" + "}" + "\r\n");
+            out.flush();
+
+            out.writeBytes("--" + boundary + "\r\n");
+            out.writeBytes(
+                "Content-Disposition: form-data;" + "name=\"userinfo\";" + "\r\n");
+            out.writeBytes("\r\n");
+            out.writeBytes(
+                "{\"user_id\":\"" + user_id + "\"," + "\"request\":\"find\"}" + "\r\n");
+            out.flush();
+            out.writeBytes("--" + boundary + "--\r\n");
+
+            out.flush();
+            out.close();
+
+            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+
+            String res = "";
+            String line;
+            while ((line = reader.readLine()) != null) {
+              res += line;
+            }
+            ;
+            Log.i("mytag", res);
+            in.close();
+
+            if (!res.equalsIgnoreCase("no track")) {
+              JSONArray jsonArray = new JSONArray(res);
+              for (int i = 0; i < jsonArray.length(); ++i) {
+                JSONObject track = new JSONObject(jsonArray.get(i).toString());
+                adapter.addItem(
+                    new analysisMusicItem(track.getString("title"), track.getString("artist"),
+                                          track.getString("url")));
+                trackId.add(track.getString("track_id"));
+              }
+              start += jsonArray.length() + 1;
+
+              runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                  adapter.notifyDataSetChanged();
+                }
+              });
+            } else {
+              runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                  Toast.makeText(getApplicationContext(), "더 이상 검색 결과가 없습니다.", Toast.LENGTH_SHORT)
+                      .show();
+                }
+              });
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
+          } finally {
+            urlConnection.disconnect();
+          }
+        }
+      }).start();
+
+    }
+  }
+
+  @Override
+  public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+    Intent recomInfo = new Intent(this, RecommendationMusicPage.class);
+    recomInfo.putExtra("title", adapter.getMusicList().get(i).getData(0));
+    recomInfo.putExtra("artist", adapter.getMusicList().get(i).getData(1));
+
+    startActivity(recomInfo);
+    finish();
+  }
+
+  @Override
+  public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
+    Intent recomInfo = new Intent(this, RecommendationMusicPage.class);
+    recomInfo.putExtra("title", adapter.getMusicList().get(i).getData(0));
+    recomInfo.putExtra("artist", adapter.getMusicList().get(i).getData(1));
+    recomInfo.putExtra("url", adapter.getMusicList().get(i).getData(2));
+    recomInfo.putExtra("track_id", trackId.get(i));
+
+    startActivity (recomInfo);
+    finish();
+
+    return false;
   }
 }

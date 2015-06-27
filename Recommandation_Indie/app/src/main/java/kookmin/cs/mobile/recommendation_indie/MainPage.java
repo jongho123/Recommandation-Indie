@@ -1,8 +1,12 @@
 package kookmin.cs.mobile.recommendation_indie;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,7 +27,12 @@ import android.widget.Toast;
 public class MainPage extends ActionBarActivity implements View.OnClickListener {
 
   private static final int REQUEST_CODE_LOGIN = 1001;
-  private boolean singer = false;
+  private static boolean singer = false;
+  public static String USER_ID = "guest";
+
+  public static String DATABASE_NAME = "recommendationIndie";
+  public static String TABLE_NAME = "playlist";
+  public static SQLiteDatabase db;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -31,7 +40,57 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     setContentView(R.layout.activity_main);
 
     Button btnFind = (Button) findViewById(R.id.btn_music_finder);
+    Button btnConfigure = (Button) findViewById(R.id.btn_configure);
+
     btnFind.setOnClickListener(this);
+    btnConfigure.setOnClickListener(this);
+
+    db = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
+
+    try {
+      db.execSQL("create table " + TABLE_NAME + "("
+                 + " _id integer PRIMARY KEY autoincrement, "
+                 + " title text, "
+                 + " artist text, "
+                 + " url text, "
+                 + " track_id text);");
+    } catch (Exception ex) {
+      Log.e("mytag", "Exception in CREATE_SQL", ex);
+    }
+    String[] columns = {"title", "artist", "url", "track_id"};
+    Cursor
+        c1 =
+        MainPage.db.query(MainPage.TABLE_NAME, columns, null, null, null, null, "_id", "0, 10");
+
+    if (c1.getCount() != 0) {
+      c1.moveToLast();
+      RecommendationMusicPage.prevTitle = c1.getString(0);
+      RecommendationMusicPage.prevArtist = c1.getString(1);
+    } else {
+      String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
+
+      String[] projection = {
+          MediaStore.Audio.Media.TITLE,
+          MediaStore.Audio.Media.ARTIST,
+          MediaStore.Audio.Media.DATA
+      };
+
+      Cursor cursor = managedQuery(
+          MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+          projection,
+          selection,
+          null,
+          null);
+
+      if (cursor.getCount() != 0) {
+        cursor.moveToNext();
+        RecommendationMusicPage.prevTitle = cursor.getString(0);
+        RecommendationMusicPage.prevArtist = cursor.getString(1);
+      }
+      Log.i("mytag", "title : " + RecommendationMusicPage.prevTitle + "  artist : "
+                     + RecommendationMusicPage.prevArtist);
+      c1.close();
+    }
   }
 
   protected void onStart() {
@@ -61,11 +120,12 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
     super.onActivityResult(requestCode, resultCode, Data);
 
     if (requestCode == REQUEST_CODE_LOGIN && resultCode == RESULT_OK) {
-      if (Data.getExtras().getInt("user") == 1) {
+      if (Data.getIntExtra("user", 0) == 1) {
         singer = true;
       } else {
         singer = false;
       }
+      USER_ID = Data.getStringExtra("user_id");
 
       Toast.makeText(getApplicationContext(), "" + singer, Toast.LENGTH_SHORT).show();
     }
@@ -75,6 +135,7 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
   public boolean onCreateOptionsMenu(Menu menu) {
     // Inflate the menu; this adds items to the action bar if it is present.
     getMenuInflater().inflate(R.menu.menu_main, menu);
+
     return true;
   }
 
@@ -87,6 +148,10 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
 
     //noinspection SimplifiableIfStatement
     if (id == R.id.action_login) {
+      if(!USER_ID.equalsIgnoreCase("guest")) {
+        Toast.makeText(getApplicationContext(), "이미 로그인 하셨습니다", Toast.LENGTH_SHORT).show();
+        return true;
+      }
       startActivityForResult(new Intent(this, LoginPage.class), REQUEST_CODE_LOGIN);
       return true;
     }
@@ -102,6 +167,10 @@ public class MainPage extends ActionBarActivity implements View.OnClickListener 
       startActivity(new Intent(this, RegisterMusicPage.class));
     } else if (v.getId() == R.id.btn_music_finder) {
       startActivity(new Intent(this, MusicFinder.class));
+    } else if (v.getId() == R.id.btn_configure) {
+      Intent intent = new Intent(this, ConfigurePage.class);
+      intent.putExtra("singer", singer);
+      startActivity(intent);
     }
   }
 }

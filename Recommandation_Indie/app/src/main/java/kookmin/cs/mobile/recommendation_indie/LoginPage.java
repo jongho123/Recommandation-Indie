@@ -3,9 +3,19 @@ package kookmin.cs.mobile.recommendation_indie;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 /**
  * @author Jongho Lim, sloth@kookmin.ac.kr
@@ -18,13 +28,17 @@ import android.widget.Toast;
  */
 public class LoginPage extends ActionBarActivity implements View.OnClickListener {
 
+  private EditText editUserId;
+  private EditText editPass;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_login);
 
     Button btnSignUp = (Button) findViewById(R.id.btn_sign_up);
-
+    editUserId = (EditText) findViewById(R.id.edit_user_id);
+    editPass = (EditText) findViewById(R.id.edit_pass);
     /* test button */
     Button btnListener = (Button) findViewById(R.id.btn_sign_in);
     Button btnSinger = (Button) findViewById(R.id.btn_singer);
@@ -36,14 +50,23 @@ public class LoginPage extends ActionBarActivity implements View.OnClickListener
 
   @Override
   public void onClick(View v) {
+    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+    imm.hideSoftInputFromWindow(editUserId.getWindowToken(), 0);
+
     switch (v.getId()) {
       case R.id.btn_sign_up:
         Toast.makeText(getApplicationContext(), "sign up", Toast.LENGTH_SHORT).show();
         break;
       case R.id.btn_sign_in:
-        Toast.makeText(getApplicationContext(), "sign in", Toast.LENGTH_SHORT).show();
         Intent resultSignin = new Intent();
         resultSignin.putExtra("user", 0);
+        if(!editUserId.getText().toString().equalsIgnoreCase("")) {
+          resultSignin.putExtra("user_id", editUserId.getText().toString());
+        } else {
+          Toast.makeText(getApplicationContext(), "id를 입력해주세요.", Toast.LENGTH_SHORT).show();
+          break;
+        }
+
         setResult(RESULT_OK, resultSignin);
         finish();
         break;
@@ -51,9 +74,44 @@ public class LoginPage extends ActionBarActivity implements View.OnClickListener
         Toast.makeText(getApplicationContext(), "singer", Toast.LENGTH_SHORT).show();
         Intent resultSinger = new Intent();
         resultSinger.putExtra("user", 1);
+        if(!editUserId.getText().toString().equalsIgnoreCase("")) {
+          resultSinger.putExtra("user_id", editUserId.getText().toString());
+        } else {
+          Toast.makeText(getApplicationContext(), "id를 입력해주세요.", Toast.LENGTH_SHORT).show();
+          break;
+        }
+        createUser();
         setResult(RESULT_OK, resultSinger);
         finish();
         break;
     }
+  }
+
+  private void createUser() {
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        URL url;
+        HttpURLConnection urlConnection;
+        try {
+          url =
+              new URL("http://52.68.82.234:19918/createuser" + "/" + editUserId.getText().toString());
+          urlConnection = (HttpURLConnection) url.openConnection();
+
+          urlConnection.setDoInput(true);
+          urlConnection.setUseCaches(false);
+
+          InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+          BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+
+          String res = reader.readLine();
+          in.close();
+          Log.i("mytag", res);
+
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }).start();
   }
 }
