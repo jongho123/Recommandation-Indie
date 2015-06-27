@@ -6,17 +6,13 @@
               android:orientation="horizontal">
 
     <Button android:id="@+id/btn_register_music"
-            android:text="Register Music"
-            android:textColor="#ff00ff00"
-            android:background="#0000ff"
+            android:background="@drawable/music_register"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"/>
 
     <Button android:id="@+id/btn_music_recommendation"
-            android:text="Music recommendation"
-            android:textColor="#ff00ff00"
-            android:background="#ffff0000"
+            android:background="@drawable/music_recommandation_singer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_weight="1"/>

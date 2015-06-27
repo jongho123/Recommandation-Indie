@@ -2,16 +2,61 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
+              android:orientation="vertical"
               android:gravity="center">
 
-    <EditText android:id="@+id/edit_filename"
-              android:layout_width="150dp"
-              android:layout_height="wrap_content"
-              android:hint="enter filename"/>
+    <Button android:id="@+id/btn_register_music_image"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:background="@drawable/register_musicimage"
+            android:layout_marginBottom="30dp"/>
 
-    <Button android:id="@+id/btn_register"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="추가"/>
+    <LinearLayout android:layout_width="wrap_content"
+                  android:layout_height="wrap_content">
+
+        <TextView android:id="@+id/text_title"
+                  android:layout_width="50dp"
+                  android:layout_height="wrap_content"
+                  android:text="TITLE"/>
+
+        <EditText android:id="@+id/edit_title"
+                  android:layout_width="200dp"
+                  android:layout_height="wrap_content"
+                  android:hint="노래 제목을 입력하세요"/>
+
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="wrap_content"
+                  android:layout_height="wrap_content">
+
+        <TextView android:id="@+id/text_music"
+                  android:layout_width="50dp"
+                  android:layout_height="match_parent"
+                  android:gravity="center"
+                  android:text="MUSIC"/>
+
+        <Spinner android:id="@+id/spin_musicfile"
+                 android:layout_width="200dp"
+                 android:layout_height="wrap_content"
+                 android:prompt="@string/musicfile_spinner"/>
+
+    </LinearLayout>
+    <LinearLayout android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="50dp">
+
+        <Button android:id="@+id/btn_cancle_register"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/register_cancle"
+                android:layout_marginRight="20dp"/>
+
+        <Button android:id="@+id/btn_register"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/register_finish"
+                android:layout_marginLeft="20dp"/>
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -3,23 +3,58 @@
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:gravity="center">
+              android:gravity="center_horizontal"
+              android:background="@drawable/recommendation_background">
 
-    <Button android:id="@+id/btn_play"
-            android:text="시작"
-            android:layout_marginTop="20dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+    <LinearLayout android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginRight="20dp"
+                  android:layout_marginTop="20dp"
+                  android:layout_marginBottom="30dp"
+                  android:gravity="end">
 
-    <Button android:id="@+id/btn_pause"
-            android:text="중지"
-            android:layout_marginTop="20dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btn_recommendation_like"
+                   android:layout_width="50dp"
+                   android:layout_height="50dp"
+                   android:layout_marginRight="10dp"
+                   android:background="@drawable/like"/>
 
-    <Button android:id="@+id/btn_restart"
-            android:text="재시작"
-            android:layout_marginTop="20dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+        <Button android:id="@+id/btn_recommendation_unlike"
+                   android:layout_width="50dp"
+                   android:layout_height="50dp"
+                   android:background="@drawable/unlike"/>
+
+    </LinearLayout>
+    <ImageView android:id="@+id/img_recommendation_music"
+               android:layout_width="200dp"
+               android:layout_height="200dp"
+               android:src="@drawable/recommendation_image"/>
+
+    <TextView android:id="@+id/txt_recommendation_music_title"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:text="Test-Test"/>
+
+    <LinearLayout android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="50dp">
+
+        <Button android:id="@+id/btn_prev_play"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginRight="20dp"
+                android:background="@drawable/previous_music"/>
+
+        <Button android:id="@+id/btn_play"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="@drawable/button_play_selector"/>
+
+        <Button android:id="@+id/btn_next_play"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="@drawable/next_music"
+                android:layout_marginLeft="20dp"/>
+
+    </LinearLayout>
 </LinearLayout>
